@@ -43,6 +43,20 @@ def local_import(monkeypatch, source):
     def execute(args, **kwargs):
         if "clone" in args and "--bare" in args:
             calls.append((args, kwargs))
+            env = kwargs["env"]
+            askpass = Path(env["GIT_ASKPASS"])
+            assert (
+                not env["FORGE_IMPORT_TOKEN"]
+                or env["FORGE_IMPORT_TOKEN"] not in askpass.read_text()
+            )
+            for prompt, key in [
+                ("Username for HTTPS", "FORGE_IMPORT_USERNAME"),
+                ("Password for HTTPS", "FORGE_IMPORT_TOKEN"),
+            ]:
+                answer = original(
+                    [str(askpass), prompt], env=env, capture_output=True, text=True, check=True
+                )
+                assert answer.stdout.rstrip("\n") == env[key]
             # Exercise a real clone while replacing only the remote transport in tests.
             args = [args[0], "-c", "protocol.file.allow=always", *args[1:-2], str(source), args[-1]]
         return original(args, **kwargs)
@@ -171,6 +185,63 @@ def test_import_requires_session(admin):
         )
 
 
+def test_empty_repository_import_has_no_fake_commits(admin, source, local_import):
+    for ref in run_git(source, "for-each-ref", "--format=%(refname)").decode().splitlines():
+        run_git(source, "update-ref", "-d", ref)
+    result = admin.post(
+        "/api/v1/repositories/import",
+        json={
+            "name": "empty-import",
+            "source_url": "https://github.com/owner/empty",
+            "visibility": "public",
+        },
+    )
+    assert result.status_code == 201, result.text
+    assert result.json()["default_branch"] == "trunk"
+    assert admin.get(f"/api/v1/repositories/{result.json()['id']}/branches").json() == []
+    activity = admin.get("/api/v1/profiles/admin").json()["activity"]
+    assert activity["totals"]["commits"] == 0 and not activity["incomplete"]
+
+
+def test_calendar_reflects_new_commits_and_visibility_immediately(admin, repository):
+    rid = repository["id"]
+    update = {"description": "", "visibility": "public", "default_branch": "main"}
+    assert admin.put(f"/api/v1/repositories/{rid}", json=update).status_code == 200
+    assert admin.get("/api/v1/profiles/admin").json()["activity"]["totals"]["commits"] == 1
+    with Session(database.engine) as db:
+        repo = db.get(Repository, rid)
+        path = git_service.path_for(repo)
+        parent = git_service.resolve(path, "main")
+        tree = run_git(path, "rev-parse", "HEAD^{tree}").decode().strip()
+        sha = (
+            run_git(
+                path,
+                "-c",
+                "user.name=Admin",
+                "-c",
+                "user.email=admin@example.com",
+                "commit-tree",
+                tree,
+                "-p",
+                parent,
+                "-m",
+                "New contribution",
+            )
+            .decode()
+            .strip()
+        )
+        run_git(path, "update-ref", "refs/heads/main", sha, parent)
+    assert admin.get("/api/v1/profiles/admin").json()["activity"]["totals"]["commits"] == 2
+    assert (
+        admin.put(
+            f"/api/v1/repositories/{rid}", json={**update, "visibility": "private"}
+        ).status_code
+        == 200
+    )
+    profile = admin.get("/api/v1/profiles/admin").json()
+    assert profile["activity"]["total"] == 0 and profile["repositories"] == []
+
+
 def test_public_profile_editing_privacy_activity_and_deactivation(admin):
     profile = {
         "display_name": "Alice Developer",
@@ -200,7 +271,8 @@ def test_public_profile_editing_privacy_activity_and_deactivation(admin):
             f"/api/v1/repositories/{repo['id']}/tickets/{ticket['id']}/comments",
             json={"body": "Progress"},
         )
-    with TestClient(app) as visitor:
+    visitor = TestClient(app)
+    try:
         response = visitor.get("/api/v1/profiles/admin")
         assert response.status_code == 200
         data = response.json()
@@ -227,6 +299,8 @@ def test_public_profile_editing_privacy_activity_and_deactivation(admin):
             ).status_code
             == 401
         )
+    finally:
+        visitor.close()
     admin.put("/api/v1/profile", json={"display_name": "Admin", "public_email": ""})
     assert admin.get("/api/v1/profiles/admin").json()["public_email"] is None
     assert admin.get("/api/v1/profiles/admin").json()["social_links"] == []

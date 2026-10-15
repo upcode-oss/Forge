@@ -57,6 +57,20 @@ location / {
 
 The backend runs one worker. Authentication throttling is in memory and based on the connecting address. Behind the frontend proxy, the limit is shared by clients: ten login attempts per five minutes. Distributed rate limiting and trusted proxy client addresses are future work.
 
+## Repository imports
+
+In **Repositories → Import repository**, paste an HTTPS repository URL from `github.com` or `gitlab.com`, choose a Forge name, and select visibility. Imports default to private, even if the source is public. For private sources, provide a personal access token with repository read access: GitHub repository contents read permission, or GitLab's `read_repository` scope. The token is used only for the clone and is not stored in the database or Git configuration.
+
+The import copies Git commits, branches, tags, and the upstream default branch. It is a one-time copy; later upstream changes are not synchronized. Issues, pull requests, releases, provider settings, submodule repositories, and Git LFS objects are not imported. Submodule references and LFS pointer files remain in Git history. Imports time out after three minutes and remove partial repositories on failure. Use the source's current URL, as redirects are disabled. Self-hosted GitLab and GitHub Enterprise hosts are not supported yet.
+
+## Public profiles
+
+Under **Profile & Access Tokens**, edit your display name, bio, workplace/company, location, website, optional public email, and up to ten social links. **View profile** opens the shareable `/u/<username>` page. Anyone can view it without an account. The public email is a separate opt-in field: the account email is never included in the public profile response. Clearing a field or removing a social link removes it from the profile. Deactivated users' profiles return 404.
+
+The contribution calendar groups activity by UTC day and year. It includes authored Git commits matched to the account email, repository creation, issues, pull requests, and comments in public repositories. Commit dates use the Git committer timestamp; identical commits shared across branches or public repositories count once. Imported history and new pushes are read directly from Git. Private repositories and their activity are excluded for every viewer, including the profile owner. Repository visibility changes therefore update the public calendar immediately. Public repositories can be cloned anonymously; browsing their code in the web workspace still requires sign-in.
+
+Existing installations receive the profile schema migration automatically on backend startup. Rebuild and restart with `docker compose up --build -d`, retaining any database profile you already use. Back up the database and persistent data before upgrading.
+
 ## SMTP
 
 Under **Organization & System**, configure an optional SMTP host, port, TLS/STARTTLS, credentials, and sender address. Save, then send a test email to your own account. SMTP passwords are encrypted and never returned by the API. Leaving the password field blank retains a saved password; clearing the host disables SMTP. Automated notifications and password reset email workflows are not yet implemented.
