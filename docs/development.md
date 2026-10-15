@@ -29,7 +29,7 @@ The frontend defaults to backend `http://127.0.0.1:8000`; override `BACKEND_INTE
 
 | Command | Purpose |
 | --- | --- |
-| `make test` | Backend API tests and real Git HTTP clone/push/merge integration |
+| `make test` | Backend API tests, real Git HTTP clone/push/merge integration, and frontend component rendering regressions |
 | `make lint` | Ruff, ESLint, and TypeScript |
 | `make build` | Next.js production build |
 | `make dev` | Build and run Compose services in the foreground |

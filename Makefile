@@ -7,6 +7,7 @@ compose-build:
 	docker compose build
 test:
 	cd upcode-forge-service && python -m pytest
+	cd upcode-forge && npm test
 lint:
 	cd upcode-forge-service && ruff check .
 	cd upcode-forge && npm run lint && npm run typecheck

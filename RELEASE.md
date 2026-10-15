@@ -10,6 +10,8 @@ See [TODO.md](TODO.md) for the remaining roadmap and [installation documentation
 
 ## Added locally
 
+- Fixed a shared button rendering error that crashed public profiles and the profile editor when displaying links. Added component rendering regression tests to `make test`.
+
 - One-time HTTPS repository imports from GitHub.com and GitLab.com, including private sources with temporary access tokens, full Git history, branches, tags, and the default branch. Failed imports roll back the database entry and partial Git repository.
 - Public `/u/<username>` profiles with editable display name, bio, workplace, location, website, opt-in public email, and social links. A yearly contribution heatmap and public repository cards are accessible without signing in; private activity and account email remain private.
 - Migration `0002` adds profile fields to existing accounts without changing authentication or repository data. Rebuild both application services to use the new UI and API.
