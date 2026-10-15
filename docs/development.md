@@ -37,6 +37,8 @@ The frontend defaults to backend `http://127.0.0.1:8000`; override `BACKEND_INTE
 
 Tests use disposable SQLite databases and Git repositories, including an HTTP server bound to an ephemeral loopback port. They do not use the application data volume or external SMTP. SQL schema compilation covers PostgreSQL and MySQL dialects; this is separate from running integration tests against live database services. The initial implementation was also checked manually against PostgreSQL 17 and MariaDB 11 containers, including setup, migrations, SQLAlchemy writes, and encrypted configuration restore.
 
+SSH tests validate key parsing and OpenSSH fingerprints, account/key/repository permissions, revocation on existing connections, command and path restrictions, pack streaming, a real Git push through the command handler, size limits, and timeouts. `tests/test_ssh_network.py` additionally runs a real OpenSSH clone/push against AsyncSSH, checks the pinned server host key, rejects a shell command, and checks revocation. That test requires the installed backend dependencies, OpenSSH `ssh`/`ssh-keygen` clients, and permission to bind loopback. Unit/API fixtures leave the SSH listener disabled even if it is enabled in your shell environment.
+
 The initial Compose smoke test covered setup, session cookies, private clone/push through the Next.js proxy, pull request merge, and logout. Visual browser verification remains pending because no browser was connected to the implementation session.
 
 Use `ruff format .` inside the backend and `npx prettier --write .` inside the frontend for formatting. Keep schema migrations explicit, update the release notes for user-visible changes, and retain English for project-maintained text.
