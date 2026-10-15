@@ -234,3 +234,94 @@ test("the profile editor renders image upload and removal beside profile fields"
     resource.useResource = originalResource;
   }
 });
+
+test("repository clone controls show SSH URLs and hide SSH when disabled", () => {
+  const { ToastProvider } = loadTypeScript(
+    resolve(root, "components/ui/toast.tsx"),
+  );
+  const { CloneBar } = loadTypeScript(
+    resolve(root, "features/repositories/clone-bar.tsx"),
+  );
+  const httpsUrl = "https://forge.example/git/alice/project.git";
+  const sshUrl = "ssh://git@forge.example:2222/alice/project.git";
+  function render(url) {
+    return renderToStaticMarkup(
+      React.createElement(
+        ToastProvider,
+        null,
+        React.createElement(CloneBar, {
+          httpsUrl,
+          sshUrl: url,
+          protocol: "ssh",
+          onProtocolChange: () => {},
+        }),
+      ),
+    );
+  }
+  const enabled = render(sshUrl);
+  assert.match(enabled, /aria-label="Clone protocol"/);
+  assert.ok(enabled.includes(`<code>${sshUrl}</code>`));
+  assert.match(
+    enabled,
+    /<option(?=[^>]*value="ssh")(?=[^>]*selected="")[^>]*>/,
+  );
+  const disabled = render(null);
+  assert.ok(disabled.includes(`<code>${httpsUrl}</code>`));
+  assert.doesNotMatch(disabled, /value="ssh"/);
+});
+
+test("SSH key settings render fingerprints, scopes and connection details", () => {
+  const resource = loadTypeScript(resolve(root, "hooks/use-resource.ts"));
+  const original = resource.useResource;
+  const { ToastProvider } = loadTypeScript(
+    resolve(root, "components/ui/toast.tsx"),
+  );
+  const { SSHKeysCard } = loadTypeScript(
+    resolve(root, "features/profile/ssh-keys.tsx"),
+  );
+  resource.useResource = (path) => ({
+    loading: false,
+    error: "",
+    data:
+      path === "/ssh"
+        ? {
+            enabled: true,
+            host: "forge.example",
+            port: 2222,
+            username: "git",
+            host_fingerprint: "SHA256:server-key",
+          }
+        : [
+            {
+              id: 1,
+              name: "Work laptop",
+              fingerprint: "SHA256:user-key",
+              scope: "read",
+              created_at: "2026-01-01T00:00:00Z",
+              last_used_at: null,
+            },
+          ],
+  });
+  try {
+    const markup = renderToStaticMarkup(
+      React.createElement(
+        ToastProvider,
+        null,
+        React.createElement(SSHKeysCard),
+      ),
+    );
+    for (const text of [
+      "Add SSH key",
+      "Work laptop",
+      "SHA256:user-key",
+      "SHA256:server-key",
+      "Read only",
+      "git@forge.example",
+      "Never",
+    ]) {
+      assert.ok(markup.includes(text), text);
+    }
+  } finally {
+    resource.useResource = original;
+  }
+});

@@ -13,6 +13,32 @@ Open <http://localhost:3000/setup>. Configure the instance name, public origin, 
 
 Sign in and create a repository. Generate a token under **Profile & Access Tokens**, then use your username and token as Git's HTTP credentials. Public repositories allow anonymous clone/fetch. All pushes require a write token and repository write or maintain access. The web application currently requires sign-in even for public repository browsing.
 
+## SSH access
+
+Docker Compose enables Git SSH on `127.0.0.1:2222` by default, alongside HTTPS. Under **Profile & Access Tokens → SSH keys**, add the contents of a public `.pub` file and give it a name. Supported keys are Ed25519, ECDSA, and RSA with at least 2048 bits. Private keys, certificates, and `authorized_keys` options are not accepted. A key can belong to one account only. Choose read-only or read/write scope; the key never grants more repository access than its account already has.
+
+Generate a key on your computer if needed:
+
+```bash
+ssh-keygen -t ed25519 -C "you@example.com"
+cat ~/.ssh/id_ed25519.pub
+```
+
+After adding the public key, test authentication and compare the host fingerprint with the one displayed in Forge:
+
+```bash
+ssh -T -p 2222 git@localhost
+git clone ssh://git@localhost:2222/your-username/your-repository.git
+```
+
+The SSH username is always `git`; your key identifies the Forge account. In a repository, switch the clone selector from **HTTPS** to **SSH** and copy its URL. To change an existing clone, use `git remote set-url origin <SSH-URL>`. Public repositories still require an authorized key over SSH; anonymous reads remain available over HTTP(S).
+
+`FORGE_SSH_ENABLED` enables the backend listener (Compose default `true`). `FORGE_SSH_PORT` is the published/advertised port (default `2222`); port `2222` inside the container remains fixed. Leave `FORGE_SSH_HOST` blank to use the hostname from the instance public URL, or set a dedicated SSH hostname. For remote SSH access, set `FORGE_SSH_BIND_ADDRESS=0.0.0.0` and forward that TCP port to the Docker host. An HTTP reverse proxy does not forward SSH. Set `FORGE_SSH_HOST` to an unbracketed address when using IPv6; clone URLs include the required brackets.
+
+Only Git upload-pack and receive-pack are allowed. The service provides no interactive shell, PTY, SFTP, SCP, agent/X11 forwarding, or TCP/Unix-socket forwarding. Pushes use the same repository permissions and rejection of force pushes/deletions as HTTPS. The incoming body limit is `FORGE_MAX_GIT_BODY_MB`, and Git commands time out after 120 seconds. Removing a key or deactivating an account is checked before every new Git command, including commands on an existing SSH connection. A transfer already in progress can finish. Password changes revoke sessions and HTTP Git tokens; SSH keys are managed separately.
+
+The Ed25519 server host key is created once under `/data/ssh/host_ed25519`, with permissions `0600`, and persists in `forge_data`. Include this directory in backups so restored instances keep their SSH identity. Registered public keys are stored in the database and migrate automatically. Rebuild both services after enabling this feature. Local backend development leaves SSH disabled unless `FORGE_SSH_ENABLED=true` is exported; `FORGE_SSH_LISTEN_HOST` and `FORGE_SSH_LISTEN_PORT` control its local listener.
+
 ## Database selection
 
 SQLite is the default and stores its database at `/data/forge.db` inside `forge_data`.

@@ -12,6 +12,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("FORGE_SECRET_KEY", "test-secret-" + "a" * 40)
     monkeypatch.setenv("FORGE_SETUP_TOKEN", "test-setup-" + "b" * 40)
     monkeypatch.setenv("FORGE_BOOTSTRAP_ORIGIN", "http://testserver")
+    monkeypatch.setenv("FORGE_SSH_ENABLED", "false")
     settings.cache_clear()
     attempts.clear()
     with TestClient(app, headers={"X-Forge-Request": "1"}) as result:

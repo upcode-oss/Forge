@@ -16,6 +16,8 @@ The FastAPI application lives in `upcode-forge-service/app/`:
 | `api.py` | Setup, authentication, administration, repository access, and collaboration |
 | `git_service.py` | Git initialization, browsing, diffs, and merges |
 | `git_http.py` | Authorized Git Smart HTTP transport |
+| `ssh_support.py`, `ssh_keys.py` | Public key validation, fingerprints, host keys, key management, and SSH clone URLs |
+| `git_ssh.py`, `ssh_server.py` | Per-command Git authorization, binary pack streaming, and the AsyncSSH listener |
 | `main.py` | Lifespan, middleware, health, and routing |
 
 Alembic owns database schema changes. `installation.json` contains the encrypted SQLAlchemy database URL. The encryption key derives from `FORGE_SECRET_KEY`. Setup is serialized using a filesystem lock and a singleton instance record prevents reinitializing an existing database. Run one application instance/worker against a data volume in this release.
@@ -25,6 +27,10 @@ Alembic owns database schema changes. `installation.json` contains the encrypted
 Passwords use Argon2. Browser sessions use random secrets in HttpOnly, SameSite=Lax cookies; only SHA-256 digests are stored in SQL. Sessions expire after seven days. Deploy with `FORGE_COOKIE_SECURE=true` behind HTTPS. Mutating browser API calls require a custom request header, and supplied Origin headers must match a configured origin. CORS is disabled.
 
 Git authenticates using HTTP Basic with a username and an expiring personal access token, separate from browser sessions and account passwords. Token scope only narrows repository rights. Revocation and account deactivation are checked on every Git request. Password changes revoke all sessions and Git tokens.
+
+Git SSH uses [AsyncSSH](https://asyncssh.readthedocs.io/en/latest/api.html) in the backend process, with a persistent Ed25519 host key and public-key-only authentication as `git`. The cryptography library validates and canonicalizes uploaded OpenSSH public keys; SHA-256 fingerprints are unique across accounts. Read-only keys further narrow account permissions. Every command rechecks the key id, account id, fingerprint, current account state, key scope, and repository permissions. This prevents an old authenticated connection from acquiring a different identity if a deleted SQL key id is reused. Password, keyboard-interactive, host-based and GSS authentication, shells, PTYs, file transfer, and all forwarding are disabled. A command-free connection prints an authentication greeting and exits.
+
+The SSH command parser accepts only `git-upload-pack` or `git-receive-pack` with an `owner/name.git` path. Database ids determine the actual repository path. Git starts without a shell, with server-controlled arguments and an environment that does not inherit client-provided configuration. Pack streams use bounded chunks and backpressure; oversized input, timeout, disconnect, and cancellation stop the Git process group. Listener shutdown closes active SSH connections before database disposal. Keys are stored in SQL; the private host key is stored only in the persistent data volume.
 
 | Repository role | Permissions |
 | --- | --- |
@@ -43,4 +49,4 @@ Browsing resolves references to commit object IDs before reading trees/blobs. Sy
 
 Pull requests compare two branches in the same repository. Merge uses `git merge-tree --write-tree`, creates a merge commit, and updates the destination ref with the expected previous object ID. Conflicts and concurrent destination changes fail without overwriting the destination. Forks, review approvals, branch protection policies, and CI status checks are future work. Git ref updates and SQL transactions are separate storage operations; a backup must capture both stores consistently.
 
-The frontend forwards `/api/*` and `/git/*` to the backend using runtime route handlers. Only the frontend port is published by Compose, and both application containers run as non-root users.
+The frontend forwards `/api/*` and `/git/*` to the backend using runtime route handlers. Compose publishes the frontend HTTP port and the backend Git SSH port, each on loopback by default. Both application containers run as non-root users; SSH requires no system login accounts or root daemon.

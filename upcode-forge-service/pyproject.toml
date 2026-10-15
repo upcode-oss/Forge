@@ -10,7 +10,7 @@ requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.115,<1", "uvicorn[standard]>=0.34,<1", "sqlalchemy>=2.0.36,<3",
   "alembic>=1.14,<2", "pydantic-settings>=2.7,<3", "email-validator>=2.2,<3",
-  "argon2-cffi>=25,<26", "cryptography>=44,<47", "psycopg[binary]>=3.2,<4",
+  "argon2-cffi>=25,<26", "cryptography>=48.0.1,<49", "psycopg[binary]>=3.2,<4",
   "PyMySQL>=1.1,<2", "Pillow>=12.3,<13",
   "asyncssh>=2.24.1,<3",
 ]

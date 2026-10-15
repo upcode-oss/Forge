@@ -14,6 +14,7 @@ A self-hosted Git collaboration platform with repository hosting, code browsing,
 ## 🚀 Features
 
 - 📦 **Git Repository Hosting** - Create public and private bare Git repositories; clone, fetch, and push over HTTP(S)
+- 🔐 **SSH Git Access** - Register SSH public keys, choose read-only or read/write scope, and clone, fetch, or push through a Git-only SSH service
 - 📥 **Repository Imports** - Import GitHub.com and GitLab.com repositories, including Git history, branches, and tags; optional tokens support private sources
 - 👤 **Public Profiles** - Upload a profile picture and share your bio, workplace, location, public email, website, social links, public repositories, and a yearly calendar including anonymized private contributions
 - 🌿 **Code & History** - Branch selection, directory navigation, text previews, Markdown READMEs, commit history, and diffs
@@ -26,7 +27,7 @@ A self-hosted Git collaboration platform with repository hosting, code browsing,
 - ✉️ **SMTP Configuration** - Encrypted credentials and test email delivery in administration
 - 🎨 **Shared Upcode UI** - Sprint theme variables, fonts, sidebar layout, cards, forms, and responsive light/dark mode
 
-Version 0.1.0 is an initial implementation. SSH, Git LFS, forks, CI runners, automated email notifications, and branch protection rules are tracked in [TODO.md](TODO.md).
+Version 0.1.0 is an initial implementation. Git LFS, forks, CI runners, automated email notifications, and branch protection rules are tracked in [TODO.md](TODO.md).
 
 ## Local quality gates
 

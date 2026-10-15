@@ -194,4 +194,6 @@ def test_schema_compiles_for_supported_databases(dialect):
         lambda sql, *args, **kwargs: statements.append(str(sql.compile(dialect=engine.dialect))),
     )
     Base.metadata.create_all(engine)
-    assert len(statements) == len(Base.metadata.tables)
+    assert len(statements) == len(Base.metadata.tables) + sum(
+        len(table.indexes) for table in Base.metadata.tables.values()
+    )

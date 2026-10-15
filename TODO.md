@@ -1,6 +1,6 @@
 # Open work
 
-- SSH transport and SSH key management
+- Repository-scoped SSH deploy keys and hardware-backed SSH key types
 - Git LFS, repository forks, tags UI, and archive downloads
 - Protected branches, required approvals, and status checks
 - Repository deletion/transfer with recovery and audit history

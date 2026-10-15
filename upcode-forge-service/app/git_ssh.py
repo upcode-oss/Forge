@@ -118,7 +118,7 @@ async def run_git(process, command):
         "git",
         "-c",
         "core.hooksPath=/dev/null",
-        command.operation,
+        command.operation.removeprefix("git-"),
         str(command.path),
         env=git_environment(process.env.get("GIT_PROTOCOL")),
         stdin=asyncio.subprocess.PIPE,

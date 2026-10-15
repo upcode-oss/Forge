@@ -4,6 +4,7 @@ import hashlib
 import os
 from urllib.parse import urlsplit
 
+from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519, rsa
 from fastapi import HTTPException
@@ -35,7 +36,7 @@ def parse_public_key(value):
             serialization.Encoding.OpenSSH, serialization.PublicFormat.OpenSSH
         )
         raw = base64.b64decode(canonical.split()[1], validate=True)
-    except (ValueError, TypeError, UnicodeError, binascii.Error) as error:
+    except (ValueError, TypeError, UnicodeError, binascii.Error, UnsupportedAlgorithm) as error:
         raise HTTPException(422, "Invalid SSH public key") from error
     fingerprint = "SHA256:" + base64.b64encode(hashlib.sha256(raw).digest()).decode().rstrip("=")
     return canonical.decode(), fingerprint
