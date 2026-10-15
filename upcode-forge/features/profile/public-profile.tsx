@@ -27,10 +27,9 @@ import type { PublicProfile as Profile } from "@/types/api";
 import { ActivityCalendar } from "./activity-calendar";
 
 export function PublicProfile({ username }: { username: string }) {
-  const currentYear = new Date().getUTCFullYear();
-  const [year, setYear] = useState(currentYear);
+  const [year, setYear] = useState<number | null>(null);
   const resource = useResource<Profile>(
-    `/profiles/${encodeURIComponent(username)}?year=${year}`,
+    `/profiles/${encodeURIComponent(username)}${year === null ? "" : `?year=${year}`}`,
   );
   const { notify } = useToast();
   const profile = resource.data;
@@ -158,7 +157,7 @@ export function PublicProfile({ username }: { username: string }) {
                   <Card>
                     <GitCommitHorizontal />
                     <strong>{profile.activity.total.toLocaleString()}</strong>
-                    <span>Contributions in {year}</span>
+                    <span>Contributions in {profile.activity.year}</span>
                   </Card>
                   <Card>
                     <FolderGit2 />
@@ -171,7 +170,7 @@ export function PublicProfile({ username }: { username: string }) {
                       {profile.activity.longest_streak}
                       <small> days</small>
                     </strong>
-                    <span>Longest streak in {year}</span>
+                    <span>Longest streak in {profile.activity.year}</span>
                   </Card>
                 </div>
                 <Card>
@@ -181,15 +180,12 @@ export function PublicProfile({ username }: { username: string }) {
                     action={
                       <Select
                         aria-label="Contribution year"
-                        value={year}
+                        value={profile.activity.year}
                         onChange={(event) =>
                           setYear(Number(event.target.value))
                         }
                       >
-                        {Array.from(
-                          { length: Math.min(10, currentYear - 1969) },
-                          (_, index) => currentYear - index,
-                        ).map((value) => (
+                        {profile.activity.available_years.map((value) => (
                           <option key={value} value={value}>
                             {value}
                           </option>

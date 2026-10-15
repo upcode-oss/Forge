@@ -10,7 +10,7 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from alembic import command
-from app import database, git_service, repository_import
+from app import database, git_service, profiles, repository_import
 from app.config import settings
 from app.main import app
 from app.models import Membership, Repository, User
@@ -335,6 +335,9 @@ def test_imported_history_counts_in_correct_year_and_deduplicates(
     admin, source, local_import, visibilities
 ):
     occurred = datetime.now(UTC) - timedelta(days=400)
+    with Session(database.engine) as db:
+        db.get(User, 1).created_at = occurred - timedelta(days=1)
+        db.commit()
     env = {"GIT_AUTHOR_DATE": occurred.isoformat(), "GIT_COMMITTER_DATE": occurred.isoformat()}
     run_git(source, "commit", "--allow-empty", "-m", "Historical contribution", env=env)
     run_git(source, "branch", "another-copy")
@@ -360,6 +363,31 @@ def test_imported_history_counts_in_correct_year_and_deduplicates(
     current = admin.get("/api/v1/profiles/admin").json()["activity"]
     assert current["totals"]["commits"] == (1 if is_public else 0)
     assert current["total"] == 3
+
+
+@pytest.mark.parametrize("registration_year", [2022, 2042])
+def test_calendar_years_start_at_registration_and_extend_to_current_year(
+    admin, monkeypatch, registration_year
+):
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2042, 4, 15, 12, tzinfo=UTC)
+
+    monkeypatch.setattr(profiles, "datetime", Clock)
+    with Session(database.engine) as db:
+        db.get(User, 1).created_at = datetime(registration_year, 1, 1, tzinfo=UTC)
+        db.commit()
+    response = admin.get("/api/v1/profiles/admin")
+    assert response.status_code == 200
+    activity = response.json()["activity"]
+    assert activity["year"] == 2042
+    assert activity["available_years"] == list(range(registration_year, 2043))
+    first = admin.get(f"/api/v1/profiles/admin?year={registration_year}")
+    assert first.status_code == 200
+    assert first.json()["activity"]["year"] == registration_year
+    for invalid in (registration_year - 1, 2043):
+        assert admin.get(f"/api/v1/profiles/admin?year={invalid}").status_code == 422
 
 
 def test_private_contributions_respect_profile_owners_memberships(admin, repository):

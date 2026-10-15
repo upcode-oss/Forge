@@ -103,65 +103,89 @@ test("the public profile route renders its workspace link and loading state", ()
   assert.match(markup, /Loading/);
 });
 
-test("loaded public profiles render avatars and private contribution counts", () => {
-  const resource = loadTypeScript(resolve(root, "hooks/use-resource.ts"));
-  const original = resource.useResource;
-  const { ToastProvider } = loadTypeScript(
-    resolve(root, "components/ui/toast.tsx"),
-  );
-  const { PublicProfile } = loadTypeScript(
-    resolve(root, "features/profile/public-profile.tsx"),
-  );
-  const avatar = "/api/v1/avatars/hackandcode/avatar-hash.png";
-  resource.useResource = () => ({
-    loading: false,
-    error: "",
-    data: {
-      username: "hackandcode",
-      display_name: "Hack and Code",
-      avatar_url: avatar,
-      bio: "Building Forge",
-      company: "",
-      location: "",
-      website: "",
-      public_email: null,
-      social_links: [],
-      created_at: "2026-01-01T00:00:00Z",
-      repository_count: 0,
-      repositories: [],
-      activity: {
-        year: 2026,
-        total: 5,
-        private_total: 3,
-        longest_streak: 1,
-        incomplete: false,
-        days: [{ date: "2026-01-01", count: 5, private_count: 3 }],
-        totals: {
-          commits: 2,
-          repositories: 0,
-          issues: 0,
-          pulls: 0,
-          comments: 0,
+for (const registrationYear of [2012, 2026]) {
+  test(`loaded profiles show all years since registration in ${registrationYear}`, () => {
+    const resource = loadTypeScript(resolve(root, "hooks/use-resource.ts"));
+    const original = resource.useResource;
+    const { ToastProvider } = loadTypeScript(
+      resolve(root, "components/ui/toast.tsx"),
+    );
+    const { PublicProfile } = loadTypeScript(
+      resolve(root, "features/profile/public-profile.tsx"),
+    );
+    const avatar = "/api/v1/avatars/hackandcode/avatar-hash.png";
+    resource.useResource = () => ({
+      loading: false,
+      error: "",
+      data: {
+        username: "hackandcode",
+        display_name: "Hack and Code",
+        avatar_url: avatar,
+        bio: "Building Forge",
+        company: "",
+        location: "",
+        website: "",
+        public_email: null,
+        social_links: [],
+        created_at: `${registrationYear}-01-01T00:00:00Z`,
+        repository_count: 0,
+        repositories: [],
+        activity: {
+          year: 2026,
+          available_years: Array.from(
+            { length: 2026 - registrationYear + 1 },
+            (_, index) => registrationYear + index,
+          ),
+          total: 5,
+          private_total: 3,
+          longest_streak: 1,
+          incomplete: false,
+          days: [{ date: "2026-01-01", count: 5, private_count: 3 }],
+          totals: {
+            commits: 2,
+            repositories: 0,
+            issues: 0,
+            pulls: 0,
+            comments: 0,
+          },
         },
       },
-    },
+    });
+    try {
+      const markup = renderToStaticMarkup(
+        React.createElement(
+          ToastProvider,
+          null,
+          React.createElement(PublicProfile, { username: "hackandcode" }),
+        ),
+      );
+      assert.ok(markup.includes(`src="${avatar}"`));
+      assert.match(markup, /3 private contributions/);
+      assert.match(markup, /5 contributions on 2026-01-01 \(3 private\)/);
+      assert.match(markup, /Public and private contributions/);
+      const select = markup.match(
+        /<select[^>]*aria-label="Contribution year"[\s\S]*?<\/select>/,
+      )?.[0];
+      assert.ok(select);
+      const options = [...select.matchAll(/<option[^>]*value="(\d+)"/g)].map(
+        (match) => Number(match[1]),
+      );
+      assert.deepEqual(
+        options,
+        Array.from(
+          { length: 2026 - registrationYear + 1 },
+          (_, index) => registrationYear + index,
+        ),
+      );
+      assert.match(
+        select,
+        /<option(?=[^>]*value="2026")(?=[^>]*selected="")[^>]*>/,
+      );
+    } finally {
+      resource.useResource = original;
+    }
   });
-  try {
-    const markup = renderToStaticMarkup(
-      React.createElement(
-        ToastProvider,
-        null,
-        React.createElement(PublicProfile, { username: "hackandcode" }),
-      ),
-    );
-    assert.ok(markup.includes(`src="${avatar}"`));
-    assert.match(markup, /3 private contributions/);
-    assert.match(markup, /5 contributions on 2026-01-01 \(3 private\)/);
-    assert.match(markup, /Public and private contributions/);
-  } finally {
-    resource.useResource = original;
-  }
-});
+}
 
 test("the profile editor renders image upload and removal beside profile fields", () => {
   const auth = loadTypeScript(resolve(root, "features/auth/auth-context.tsx"));

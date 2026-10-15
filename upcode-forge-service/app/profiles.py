@@ -173,9 +173,10 @@ def public_profile(
     if user is None:
         raise HTTPException(404, "Profile not found")
     this_year = datetime.now(UTC).year
+    registration_year = attribute(user, "created_at").astimezone(UTC).year
     year = year or this_year
-    if year > this_year:
-        raise HTTPException(422, "Choose the current year or an earlier year")
+    if not registration_year <= year <= this_year:
+        raise HTTPException(422, f"Choose a year between {registration_year} and {this_year}")
     owned = (Repository.owner_id == user.id, Repository.visibility == "public")
     repositories = db.scalars(
         select(Repository).where(*owned).order_by(Repository.created_at.desc()).limit(100)
@@ -184,5 +185,8 @@ def public_profile(
         **profile_data(user),
         "repository_count": db.scalar(select(func.count()).select_from(Repository).where(*owned)),
         "repositories": [repo_data(db, item, None) for item in repositories],
-        "activity": contributions(db, user, year),
+        "activity": {
+            **contributions(db, user, year),
+            "available_years": list(range(registration_year, this_year + 1)),
+        },
     }

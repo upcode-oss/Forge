@@ -10,6 +10,8 @@ See [TODO.md](TODO.md) for the remaining roadmap and [installation documentation
 
 ## Added locally
 
+- Contribution calendar years now start at account registration and continue chronologically through the current year, without a ten-year cap. The current year is selected by default, and the API rejects years outside the account's lifetime.
+
 - Fixed a shared button rendering error that crashed public profiles and the profile editor when displaying links. Added component rendering regression tests to `make test`.
 
 - One-time HTTPS repository imports from GitHub.com and GitLab.com, including private sources with temporary access tokens, full Git history, branches, tags, and the default branch. Failed imports roll back the database entry and partial Git repository.

@@ -23,6 +23,7 @@ export type ProfileFields = {
 };
 export type ProfileActivity = {
   year: number;
+  available_years: number[];
   days: { date: string; count: number; private_count: number }[];
   totals: {
     commits: number;
