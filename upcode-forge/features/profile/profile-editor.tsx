@@ -64,6 +64,12 @@ function ProfileForm({
             autoComplete="name"
           />
         </Field>
+        <Field
+          label="Account email"
+          hint="Commits are matched to this address. It stays private unless you also publish it below."
+        >
+          <Input type="email" value={user.email} readOnly />
+        </Field>
         <Field label="Bio" hint="A little about you. Up to 500 characters.">
           <Textarea
             name="bio"
