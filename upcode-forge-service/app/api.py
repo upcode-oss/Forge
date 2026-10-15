@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app import database, repository_import
 from app import git_service as git
+from app.avatars import avatar_url
 from app.config import settings
 from app.database import get_db
 from app.models import AccessToken, Comment, Instance, Membership, Repository, Ticket, User
@@ -50,7 +51,7 @@ def attribute(item, key):
 
 
 def user_data(user):
-    return {
+    data = {
         key: attribute(user, key)
         for key in (
             "id",
@@ -62,6 +63,7 @@ def user_data(user):
             "created_at",
         )
     }
+    return {**data, "avatar_url": avatar_url(user)}
 
 
 def visible(user):

@@ -49,7 +49,7 @@ export function PublicProfile({ username }: { username: string }) {
       <header className="public-profile-nav">
         <Link href="/" aria-label="Upcode Forge home">
           <Image
-            src="/logo.svg"
+            src="/logo.png"
             alt="Upcode Forge"
             width={175}
             height={55}

@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, LargeBinary, String, Text, UniqueConstraint
+from sqlalchemy.dialects.mysql import MEDIUMBLOB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -33,6 +34,10 @@ class User(Base):
     website: Mapped[str] = mapped_column(String(500), default="")
     public_email: Mapped[str | None] = mapped_column(String(254))
     social_links: Mapped[str] = mapped_column(Text, default="[]")
+    avatar: Mapped[bytes | None] = mapped_column(
+        LargeBinary().with_variant(MEDIUMBLOB(), "mysql"), deferred=True
+    )
+    avatar_digest: Mapped[str | None] = mapped_column(String(64))
     password_hash: Mapped[str] = mapped_column(String(255))
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
