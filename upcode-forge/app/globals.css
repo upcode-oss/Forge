@@ -1750,6 +1750,339 @@ tfoot td {
   width: 3.5rem;
   height: 3.5rem;
 }
+.profile-fields {
+  border: 0;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+.social-editor {
+  display: grid;
+  gap: 0.75rem;
+}
+.social-editor > p {
+  margin: 0;
+}
+.social-editor > .button {
+  justify-self: start;
+}
+.social-editor-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto;
+  gap: 0.5rem;
+  align-items: end;
+}
+.import-providers {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+.import-providers svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+.public-profile-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(
+      ellipse at 20% 0%,
+      color-mix(in srgb, var(--primary) 5%, transparent),
+      transparent 45%
+    ),
+    var(--background);
+}
+.public-profile-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem clamp(1rem, 4vw, 3rem);
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+  gap: 1rem;
+}
+.public-profile-nav img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.public-profile-main {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 2.5rem clamp(1rem, 4vw, 3rem);
+}
+.public-profile-grid {
+  display: grid;
+  grid-template-columns: 270px minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+.public-profile-content {
+  display: grid;
+  gap: 1.5rem;
+  min-width: 0;
+}
+.public-profile-identity {
+  overflow-wrap: anywhere;
+}
+.public-profile-avatar {
+  height: 6rem;
+  width: 6rem;
+  display: grid;
+  place-items: center;
+  border-radius: 1.5rem;
+  color: white;
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 6px 20px rgb(239 68 68 / 0.2);
+}
+.public-profile-identity h1 {
+  font-size: 1.5rem;
+  margin-bottom: 0.25rem;
+}
+.public-profile-handle {
+  margin-top: 0;
+}
+.public-profile-bio {
+  white-space: pre-wrap;
+  line-height: 1.7;
+}
+.public-profile-facts {
+  display: grid;
+  gap: 0.8rem;
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0;
+  font-size: 0.8rem;
+}
+.public-profile-facts li {
+  display: flex;
+  gap: 0.6rem;
+  align-items: start;
+  min-width: 0;
+}
+.public-profile-facts svg,
+.public-profile-socials svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+}
+.public-profile-facts a:hover,
+.public-profile-socials a:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+.public-profile-socials {
+  display: grid;
+  gap: 0.8rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+  margin-bottom: 1.5rem;
+}
+.public-profile-socials a {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  font-size: 0.8rem;
+}
+.public-profile-socials span {
+  flex: 1;
+}
+.public-profile-socials svg:last-child {
+  width: 0.8rem;
+  height: 0.8rem;
+}
+.profile-stat-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.profile-stat-grid > div {
+  display: grid;
+  gap: 0.5rem;
+}
+.profile-stat-grid svg {
+  color: var(--primary);
+  width: 1.2rem;
+  height: 1.2rem;
+}
+.profile-stat-grid strong {
+  font-size: 1.8rem;
+}
+.profile-stat-grid small {
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+.profile-stat-grid span {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+.activity-scroll {
+  overflow-x: auto;
+  padding: 0.5rem 0 1rem;
+}
+.activity-chart {
+  width: max-content;
+}
+.activity-months {
+  display: grid;
+  column-gap: 3px;
+  padding-left: 32px;
+  height: 1.4rem;
+  font-size: 0.65rem;
+  color: var(--muted-foreground);
+}
+.activity-body {
+  display: flex;
+  gap: 5px;
+}
+.activity-weekdays {
+  display: grid;
+  width: 27px;
+  grid-template-rows: repeat(7, 11px);
+  row-gap: 3px;
+  font-size: 0.6rem;
+  color: var(--muted-foreground);
+}
+.activity-weekdays span:nth-child(1) {
+  grid-row: 1;
+}
+.activity-weekdays span:nth-child(2) {
+  grid-row: 3;
+}
+.activity-weekdays span:nth-child(3) {
+  grid-row: 5;
+}
+.activity-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 11px);
+  gap: 3px;
+}
+.activity-cell {
+  display: inline-block;
+  height: 11px;
+  width: 11px;
+  border-radius: 2px;
+  outline: 1px solid color-mix(in srgb, var(--foreground) 6%, transparent);
+  outline-offset: -1px;
+}
+.activity-level-0 {
+  background: var(--muted);
+}
+.activity-level-1 {
+  background: #9be9a8;
+}
+.activity-level-2 {
+  background: #40c463;
+}
+.activity-level-3 {
+  background: #30a14e;
+}
+.activity-level-4 {
+  background: #216e39;
+}
+.dark .activity-level-1 {
+  background: #0e4429;
+}
+.dark .activity-level-2 {
+  background: #006d32;
+}
+.dark .activity-level-3 {
+  background: #26a641;
+}
+.dark .activity-level-4 {
+  background: #39d353;
+}
+.activity-empty {
+  visibility: hidden;
+}
+.activity-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.activity-legend {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.activity-details {
+  margin-top: 1rem;
+}
+.activity-details summary {
+  cursor: pointer;
+  color: var(--muted-foreground);
+}
+.activity-details ul {
+  max-height: 15rem;
+  overflow-y: auto;
+  line-height: 1.8;
+}
+.activity-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  border-top: 1px solid var(--border);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+.public-repositories-heading {
+  margin-bottom: 1rem;
+}
+.public-repositories-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.public-repositories-heading p {
+  margin-bottom: 0;
+}
+.public-repository-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.public-repository-grid > div {
+  min-width: 0;
+}
+.public-repository-grid .repo-title {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 960px) {
+  .public-profile-grid {
+    grid-template-columns: 230px minmax(0, 1fr);
+  }
+  .public-repository-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 680px) {
+  .public-profile-grid {
+    grid-template-columns: 1fr;
+  }
+  .public-profile-main {
+    padding-top: 1rem;
+  }
+  .profile-stat-grid {
+    gap: 0.5rem;
+  }
+  .profile-stat-grid > div {
+    padding: 0.8rem;
+  }
+  .profile-stat-grid strong {
+    font-size: 1.4rem;
+  }
+  .social-editor-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .social-editor-row > label:first-child {
+    grid-column: 1 / -1;
+  }
+}
 @media (max-width: 768px) {
   .welcome-card > svg {
     display: none;

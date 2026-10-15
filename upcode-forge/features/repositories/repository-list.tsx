@@ -165,7 +165,12 @@ export function RepositoryList() {
       <PageHeader
         title="Repositories"
         description="Build, share, and collaborate on your code."
-        actions={<><ImportRepositoryButton /><CreateRepositoryButton /></>}
+        actions={
+          <>
+            <ImportRepositoryButton />
+            <CreateRepositoryButton />
+          </>
+        }
       />
       <div className="repo-toolbar">
         <div className="search-input">

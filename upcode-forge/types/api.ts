@@ -22,7 +22,13 @@ export type ProfileFields = {
 export type ProfileActivity = {
   year: number;
   days: { date: string; count: number }[];
-  totals: { commits: number; repositories: number; issues: number; pulls: number; comments: number };
+  totals: {
+    commits: number;
+    repositories: number;
+    issues: number;
+    pulls: number;
+    comments: number;
+  };
   total: number;
   longest_streak: number;
   incomplete: boolean;
