@@ -1,0 +1,77 @@
+name: upcode-forge
+
+services:
+  backend:
+    build: ./upcode-forge-service
+    restart: unless-stopped
+    environment:
+      FORGE_SECRET_KEY: ${FORGE_SECRET_KEY:?Generate a random FORGE_SECRET_KEY in .env}
+      FORGE_SETUP_TOKEN: ${FORGE_SETUP_TOKEN:?Generate a random FORGE_SETUP_TOKEN in .env}
+      FORGE_BOOTSTRAP_ORIGIN: ${FORGE_PUBLIC_URL:-http://localhost:3000}
+      FORGE_COOKIE_SECURE: ${FORGE_COOKIE_SECURE:-false}
+      FORGE_MAX_GIT_BODY_MB: ${FORGE_MAX_GIT_BODY_MB:-100}
+    volumes:
+      - forge_data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    security_opt: ["no-new-privileges:true"]
+
+  frontend:
+    build: ./upcode-forge
+    restart: unless-stopped
+    environment:
+      BACKEND_INTERNAL_URL: http://backend:8000
+    ports:
+      - "${FORGE_BIND_ADDRESS:-127.0.0.1}:${FORGE_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    security_opt: ["no-new-privileges:true"]
+
+  postgres:
+    image: postgres:17-alpine
+    profiles: ["postgres"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-forge}
+      POSTGRES_USER: ${POSTGRES_USER:-forge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mariadb:
+    image: mariadb:11
+    profiles: ["mariadb"]
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${MARIADB_DATABASE:-forge}
+      MARIADB_USER: ${MARIADB_USER:-forge}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:?Set MARIADB_PASSWORD in .env}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?Set MARIADB_ROOT_PASSWORD in .env}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  forge_data:
+  postgres_data:
+  mariadb_data:
