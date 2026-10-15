@@ -56,8 +56,25 @@ export type Repository = {
   visibility: "public" | "private";
   default_branch: string;
   clone_url: string;
+  ssh_clone_url: string | null;
   role: "read" | "write" | "maintain";
   created_at: string;
+};
+export type SSHKey = {
+  id: number;
+  name: string;
+  public_key: string;
+  fingerprint: string;
+  scope: "read" | "write";
+  created_at: string;
+  last_used_at: string | null;
+};
+export type SSHStatus = {
+  enabled: boolean;
+  host: string;
+  port: number;
+  username: "git";
+  host_fingerprint: string | null;
 };
 export type Ticket = {
   id: number;

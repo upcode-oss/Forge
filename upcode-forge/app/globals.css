@@ -1579,6 +1579,33 @@ tfoot td {
 .clone-bar .button {
   flex-shrink: 0;
 }
+.clone-bar .clone-protocol {
+  flex: none;
+  min-width: 6rem;
+  width: auto;
+}
+.ssh-key-name {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+.ssh-fingerprint {
+  overflow-wrap: anywhere;
+}
+.ssh-connection-info {
+  background: var(--muted);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  overflow-wrap: anywhere;
+}
+.ssh-connection-info p {
+  margin-bottom: 0.5rem;
+}
+.ssh-connection-info p:last-child {
+  margin: 0.5rem 0 0;
+}
 .repo-tabs {
   display: flex;
   border-bottom: 1px solid var(--border);

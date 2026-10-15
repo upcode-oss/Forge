@@ -28,6 +28,7 @@ import { useResource } from "@/hooks/use-resource";
 import { api, json } from "@/services/api";
 import { formatDate } from "@/lib/utils";
 import type { Commit, Repository, Ticket, TreeEntry } from "@/types/api";
+import { CloneBar, type CloneProtocol } from "./clone-bar";
 
 export function Diff({ value }: { value: string }) {
   return (
@@ -797,23 +798,17 @@ export function RepositoryWorkspace({ id }: { id: string }) {
   const resource = useResource<Repository>(`/repositories/${id}`);
   const branchResource = useResource<string[]>(`/repositories/${id}/branches`);
   const [tab, setTab] = useState("code");
-  const [copied, setCopied] = useState(false);
-  const { notify } = useToast();
+  const [cloneProtocol, setCloneProtocol] = useState<CloneProtocol>("https");
   const repo = resource.data;
   const branches = branchResource.data ?? [];
   if (resource.loading) return <Loading />;
   if (resource.error)
     return <ErrorState message={resource.error} retry={resource.reload} />;
   if (!repo) return null;
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(repo!.clone_url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      notify("Select and copy the clone URL manually.", "error");
-    }
-  }
+  const cloneUrl =
+    cloneProtocol === "ssh" && repo.ssh_clone_url
+      ? repo.ssh_clone_url
+      : repo.clone_url;
   return (
     <>
       <Link href="/repositories" className="text-link small">
@@ -834,14 +829,12 @@ export function RepositoryWorkspace({ id }: { id: string }) {
           }
         />
       </div>
-      <div className="clone-bar">
-        <span className="small muted">HTTP clone</span>
-        <code>{repo.clone_url}</code>
-        <Button variant="outline" size="sm" onClick={copy}>
-          {copied ? <Check /> : <Copy />}
-          {copied ? "Copied" : "Copy"}
-        </Button>
-      </div>
+      <CloneBar
+        httpsUrl={repo.clone_url}
+        sshUrl={repo.ssh_clone_url}
+        protocol={cloneProtocol}
+        onProtocolChange={setCloneProtocol}
+      />
       <div
         className="repo-tabs"
         role="tablist"
@@ -894,10 +887,11 @@ export function RepositoryWorkspace({ id }: { id: string }) {
             title="Your repository is empty"
             description="Push your first commit to get started."
           />
-          <pre className="code-view">{`git clone ${repo.clone_url}\ncd ${repo.name}\ngit switch --orphan ${repo.default_branch}\necho "# ${repo.name}" > README.md\ngit add README.md\ngit commit -m "Initial commit"\ngit push -u origin ${repo.default_branch}`}</pre>
+          <pre className="code-view">{`git clone ${cloneUrl}\ncd ${repo.name}\ngit switch --orphan ${repo.default_branch}\necho "# ${repo.name}" > README.md\ngit add README.md\ngit commit -m "Initial commit"\ngit push -u origin ${repo.default_branch}`}</pre>
           <p className="muted small">
-            Use your username and an access token from Profile & Access Tokens
-            when Git asks for credentials.
+            {cloneProtocol === "ssh" && repo.ssh_clone_url
+              ? "Add your public SSH key under Profile & Access Tokens before connecting."
+              : "Use your username and an access token from Profile & Access Tokens when Git asks for credentials."}
           </p>
           <Button variant="outline" onClick={branchResource.reload}>
             Refresh branches

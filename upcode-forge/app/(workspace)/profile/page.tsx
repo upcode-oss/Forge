@@ -10,6 +10,7 @@ import { Dialog, ConfirmDialog } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 import { ErrorState, Loading } from "@/components/states";
 import { ProfileEditor } from "@/features/profile/profile-editor";
+import { SSHKeysCard } from "@/features/profile/ssh-keys";
 import { useResource } from "@/hooks/use-resource";
 import { api, json } from "@/services/api";
 import { formatDate } from "@/lib/utils";
@@ -72,7 +73,7 @@ export default function Profile() {
     <>
       <PageHeader
         title="Profile & Access Tokens"
-        description="Manage your identity and Git authentication."
+        description="Manage your identity, SSH keys and Git access tokens."
       />
       <div className="content-grid">
         <ProfileEditor />
@@ -105,6 +106,7 @@ export default function Profile() {
             </div>
           </form>
         </Card>
+        <SSHKeysCard />
         <Card className="wide">
           <CardHeader
             title="Git access tokens"

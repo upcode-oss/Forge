@@ -39,6 +39,7 @@ from app.security import (
     throttle,
     verify,
 )
+from app.ssh_support import ssh_clone_url
 
 router = APIRouter(prefix="/api/v1")
 
@@ -113,6 +114,7 @@ def repo_data(db, repo, user):
         "owner": owner.username,
         "role": role(db, repo, user),
         "clone_url": f"{instance.public_url}/git/{owner.username}/{repo.name}.git",
+        "ssh_clone_url": ssh_clone_url(instance.public_url, owner.username, repo.name),
     }
 
 

@@ -10,6 +10,12 @@ services:
       FORGE_BOOTSTRAP_ORIGIN: ${FORGE_PUBLIC_URL:-http://localhost:3000}
       FORGE_COOKIE_SECURE: ${FORGE_COOKIE_SECURE:-false}
       FORGE_MAX_GIT_BODY_MB: ${FORGE_MAX_GIT_BODY_MB:-100}
+      FORGE_SSH_ENABLED: ${FORGE_SSH_ENABLED:-true}
+      FORGE_SSH_HOST: ${FORGE_SSH_HOST:-}
+      FORGE_SSH_PORT: ${FORGE_SSH_PORT:-2222}
+      FORGE_SSH_LISTEN_HOST: 0.0.0.0
+    ports:
+      - "${FORGE_SSH_BIND_ADDRESS:-127.0.0.1}:${FORGE_SSH_PORT:-2222}:2222"
     volumes:
       - forge_data:/data
     healthcheck:

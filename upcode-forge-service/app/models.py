@@ -56,6 +56,18 @@ class AccessToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class SSHKey(Base):
+    __tablename__ = "ssh_keys"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    public_key: Mapped[str] = mapped_column(Text)
+    fingerprint: Mapped[str] = mapped_column(String(80), unique=True)
+    scope: Mapped[str] = mapped_column(String(10), default="write")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class Repository(Base):
     __tablename__ = "repositories"
     __table_args__ = (UniqueConstraint("owner_id", "name"),)

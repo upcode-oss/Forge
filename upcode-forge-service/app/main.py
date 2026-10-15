@@ -10,6 +10,8 @@ from app.avatars import router as avatars_router
 from app.config import settings
 from app.git_http import router as git_router
 from app.profiles import router as profiles_router
+from app.ssh_keys import router as ssh_keys_router
+from app.ssh_server import start_ssh_server
 
 
 @asynccontextmanager
@@ -18,10 +20,15 @@ async def lifespan(app):
     config.validate_secrets()
     config.data_dir.mkdir(parents=True, exist_ok=True)
     database.load()
-    yield
-    if database.engine is not None:
-        database.engine.dispose()
-        database.engine = None
+    ssh = await start_ssh_server() if config.ssh_enabled else None
+    try:
+        yield
+    finally:
+        if ssh:
+            await ssh.close()
+        if database.engine is not None:
+            database.engine.dispose()
+            database.engine = None
 
 
 app = FastAPI(title="Upcode Forge", version="0.1.0", lifespan=lifespan)
@@ -65,4 +72,5 @@ def health():
 app.include_router(router)
 app.include_router(profiles_router)
 app.include_router(avatars_router)
+app.include_router(ssh_keys_router)
 app.include_router(git_router)
