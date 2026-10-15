@@ -70,6 +70,7 @@ class Setup(InstanceUpdate):
 
 
 class RepoCreate(BaseModel):
+    organization: str | None = Field(default=None, pattern=r"^[a-z][a-z0-9_-]{0,49}$")
     name: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]{0,99}$")
     description: str = Field(default="", max_length=500)
     visibility: Literal["public", "private"] = "private"
@@ -83,6 +84,7 @@ class RepoUpdate(BaseModel):
 
 
 class RepoImport(BaseModel):
+    organization: str | None = Field(default=None, pattern=r"^[a-z][a-z0-9_-]{0,49}$")
     name: str = Field(pattern=r"^[a-z0-9][a-z0-9_-]{0,99}$")
     description: str = Field(default="", max_length=500)
     visibility: Literal["public", "private"] = "private"

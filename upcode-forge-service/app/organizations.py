@@ -1,47 +1,21 @@
 import hashlib
 import json
-from threading import RLock
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy import delete, exists, func, or_, select
 from sqlalchemy.exc import IntegrityError
 
-from app.api import attribute
+from app.api import attribute, repo_data
 from app.avatars import avatar_url, read_avatar
 from app.database import get_db
-from app.models import Organization, OrganizationMember, User
+from app.models import Organization, OrganizationMember, Repository, User
+from app.organization_access import access, member_role, mutation_lock, visible_to
+from app.repository_access import visible as repositories_visible
 from app.schemas import OrganizationCreate, OrganizationMemberInput, OrganizationUpdate
 from app.security import current_user, optional_user, throttle
 
 router = APIRouter(prefix="/api/v1/organizations")
-# SQLite has no row locks. Serialize changes in the supported single-worker deployment,
-# and also lock the organization row for PostgreSQL/MySQL transactions.
-mutation_lock = RLock()
-
-
-def member_role(db, organization_id, user, *, lock=False):
-    if user is None:
-        return None
-    query = select(OrganizationMember.role).where(
-        OrganizationMember.organization_id == organization_id,
-        OrganizationMember.user_id == user.id,
-    )
-    return db.scalar(query.with_for_update() if lock else query)
-
-
-def visible_to(user):
-    if user is None:
-        return Organization.visibility == "public"
-    return or_(
-        Organization.visibility == "public",
-        exists()
-        .where(
-            OrganizationMember.organization_id == Organization.id,
-            OrganizationMember.user_id == user.id,
-        )
-        .correlate(Organization),
-    )
 
 
 def organization_data(db, organization, viewer):
@@ -73,19 +47,6 @@ def profile_organizations(db, user, viewer):
         .order_by(Organization.name, Organization.id)
     )
     return [organization_data(db, item, viewer) for item in organizations]
-
-
-def access(db, slug, user, *, edit=False, lock=False):
-    query = select(Organization).where(Organization.slug == slug.lower())
-    if lock:
-        query = query.with_for_update().execution_options(populate_existing=True)
-    organization = db.scalar(query)
-    role = member_role(db, organization.id, user, lock=lock) if organization else None
-    if organization is None or (organization.visibility == "private" and role is None):
-        raise HTTPException(404, "Organization not found")
-    if edit and role not in ("owner", "maintainer"):
-        raise HTTPException(403, "Owner or Maintainer access required")
-    return organization, role
 
 
 def save(db):
@@ -187,12 +148,39 @@ def delete_organization(slug: str, db=Depends(get_db), user=Depends(current_user
         organization, role = access(db, slug, user, edit=True, lock=True)
         if role != "owner":
             raise HTTPException(403, "Only Owners can delete organizations")
+        if db.scalar(
+            select(Repository.id).where(Repository.organization_id == organization.id).limit(1)
+        ):
+            raise HTTPException(409, "Organizations containing repositories cannot be deleted")
         db.execute(
             delete(OrganizationMember).where(OrganizationMember.organization_id == organization.id)
         )
         db.delete(organization)
         db.commit()
     return Response(status_code=204)
+
+
+@router.get("/{slug}/repositories")
+def list_repositories(
+    slug: str,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=30, ge=1, le=100),
+    db=Depends(get_db),
+    user=Depends(optional_user),
+):
+    organization, _ = access(db, slug, user)
+    filters = (Repository.organization_id == organization.id, repositories_visible(user))
+    items = db.scalars(
+        select(Repository)
+        .where(*filters)
+        .order_by(Repository.created_at.desc(), Repository.id.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    return {
+        "items": [repo_data(db, item, user) for item in items],
+        "total": db.scalar(select(func.count()).select_from(Repository).where(*filters)),
+    }
 
 
 @router.get("/{slug}/members")

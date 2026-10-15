@@ -721,11 +721,17 @@ function RepositorySettings({
           </Field>
           <Field
             label="Visibility"
-            hint="Public repositories can be cloned without authentication."
+            hint={
+              repo.organization_visibility === "private"
+                ? "Repositories in private organizations stay private."
+                : "Public repositories can be cloned without authentication."
+            }
           >
             <Select name="visibility" defaultValue={repo.visibility}>
               <option value="private">Private</option>
-              <option value="public">Public</option>
+              {repo.organization_visibility !== "private" && (
+                <option value="public">Public</option>
+              )}
             </Select>
           </Field>
           <Field label="Default branch">
@@ -745,7 +751,11 @@ function RepositorySettings({
       <Card>
         <CardHeader
           title="Collaborators"
-          description="The owner and instance administrators always have maintain access."
+          description={
+            repo.owner_type === "organization"
+              ? "Organization Owners and Maintainers inherit maintain access; Readers inherit read access. Private organizations require membership."
+              : "The owner and instance administrators always have maintain access."
+          }
         />
         <p className="small muted">
           Read: browse and clone. Write: push, issues, comments, and pull
@@ -813,6 +823,11 @@ export function RepositoryWorkspace({ id }: { id: string }) {
         <ArrowLeft />
         All repositories
       </Link>
+      {repo.owner_type === "organization" && (
+        <Link href={repo.owner_profile_url} className="text-link small">
+          Organization: {repo.owner}
+        </Link>
+      )}
       <div className="repository-heading">
         <PageHeader
           title={`${repo.owner} / ${repo.name}`}

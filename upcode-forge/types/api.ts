@@ -76,6 +76,9 @@ export type Repository = {
   id: number;
   name: string;
   owner: string;
+  owner_type: "user" | "organization";
+  owner_profile_url: string;
+  organization_visibility: "public" | "private" | null;
   description: string;
   visibility: "public" | "private";
   default_branch: string;

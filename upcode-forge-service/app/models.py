@@ -1,6 +1,15 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, LargeBinary, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    LargeBinary,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.mysql import MEDIUMBLOB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -96,9 +105,19 @@ class SSHKey(Base):
 
 class Repository(Base):
     __tablename__ = "repositories"
-    __table_args__ = (UniqueConstraint("owner_id", "name"),)
+    __table_args__ = (
+        UniqueConstraint("owner_id", "name"),
+        UniqueConstraint("organization_id", "name", name="uq_repositories_organization_name"),
+        CheckConstraint(
+            "(owner_id IS NOT NULL AND organization_id IS NULL) OR "
+            "(owner_id IS NULL AND organization_id IS NOT NULL)",
+            name="ck_repositories_single_owner",
+        ),
+    )
     id: Mapped[int] = mapped_column(primary_key=True)
-    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    owner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    organization_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"), index=True)
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     name: Mapped[str] = mapped_column(String(100))
     description: Mapped[str] = mapped_column(String(500), default="")
     visibility: Mapped[str] = mapped_column(String(10), default="private")

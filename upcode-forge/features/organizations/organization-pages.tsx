@@ -27,6 +27,7 @@ import type { Organization } from "@/types/api";
 import { OrganizationForm } from "./organization-form";
 import { OrganizationPublicHeader } from "./organization-list";
 import { OrganizationMembers } from "./organization-members";
+import { OrganizationRepositories } from "./organization-repositories";
 
 export function CreateOrganization() {
   const router = useRouter();
@@ -135,7 +136,10 @@ export function PublicOrganization({ slug }: { slug: string }) {
               <aside>
                 <OrganizationIdentity organization={resource.data} />
               </aside>
-              <OrganizationMembers slug={resource.data.slug} />
+              <div className="public-profile-content">
+                <OrganizationRepositories organization={resource.data} />
+                <OrganizationMembers slug={resource.data.slug} />
+              </div>
             </div>
           )
         )}
@@ -176,6 +180,7 @@ function OrganizationSettings({
   }
   return (
     <div className="stack">
+      <OrganizationRepositories organization={organization} />
       {editable ? (
         <Card>
           <CardHeader
@@ -216,7 +221,7 @@ function OrganizationSettings({
         <Card>
           <CardHeader
             title="Delete organization"
-            description="Permanently removes this organization, its profile picture and all memberships."
+            description="Only empty organizations can be deleted. Organizations containing repositories are protected."
           />
           {error && (
             <p className="field-error" role="alert">
@@ -232,7 +237,7 @@ function OrganizationSettings({
               if (!busy) setDeleting(open);
             }}
             title={`Delete ${organization.name}?`}
-            description="This permanently deletes the organization and all its memberships. Member accounts and their repositories are kept."
+            description="This permanently deletes the empty organization and all its memberships. Organizations containing repositories cannot be deleted. Member accounts and their personal repositories are kept."
             loading={busy}
             onConfirm={() => void remove()}
           />

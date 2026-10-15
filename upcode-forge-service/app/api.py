@@ -1,19 +1,31 @@
 import json
 import secrets
 import shutil
+from contextlib import nullcontext
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from sqlalchemy import URL, delete, exists, func, or_, select
+from sqlalchemy import URL, delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import database, repository_import
+from app import database, organization_access, repository_import
 from app import git_service as git
 from app.avatars import avatar_url
 from app.config import settings
 from app.database import get_db
-from app.models import AccessToken, Comment, Instance, Membership, Repository, Ticket, User
+from app.models import (
+    AccessToken,
+    Comment,
+    Instance,
+    Membership,
+    Organization,
+    OrganizationMember,
+    Repository,
+    Ticket,
+    User,
+)
+from app.repository_access import access, role, visible
 from app.schemas import (
     SMTP,
     CommentInput,
@@ -67,54 +79,26 @@ def user_data(user):
     return {**data, "avatar_url": avatar_url(user)}
 
 
-def visible(user):
-    if user.is_admin:
-        return True
-    return or_(
-        Repository.visibility == "public",
-        Repository.owner_id == user.id,
-        exists().where(Membership.repository_id == Repository.id, Membership.user_id == user.id),
-    )
-
-
-def role(db, repo, user):
-    if user and (user.is_admin or repo.owner_id == user.id):
-        return "maintain"
-    if user:
-        membership = db.scalar(
-            select(Membership).where(
-                Membership.repository_id == repo.id, Membership.user_id == user.id
-            )
-        )
-        if membership:
-            return membership.role
-    return "read" if repo.visibility == "public" else None
-
-
-def access(db, repo_id, user, level="read"):
-    repo = db.get(Repository, repo_id)
-    permission = role(db, repo, user) if repo else None
-    if not permission:
-        raise HTTPException(404, "Repository not found")
-    if {"read": 1, "write": 2, "maintain": 3}[permission] < {"read": 1, "write": 2, "maintain": 3}[
-        level
-    ]:
-        raise HTTPException(403, "Insufficient repository permissions")
-    return repo
-
-
 def repo_data(db, repo, user):
-    owner = db.get(User, repo.owner_id)
+    organization = db.get(Organization, repo.organization_id) if repo.organization_id else None
+    owner = organization.slug if organization else db.get(User, repo.owner_id).username
+    namespace = f"organizations/{owner}" if organization else owner
     instance = db.get(Instance, 1)
     return {
         **{
             key: attribute(repo, key)
             for key in ("id", "name", "description", "visibility", "default_branch", "created_at")
         },
-        "owner": owner.username,
+        "owner": owner,
+        "owner_type": "organization" if organization else "user",
+        "owner_profile_url": f"/o/{owner}" if organization else f"/u/{owner}",
+        "organization_visibility": organization.visibility if organization else None,
+        "visibility": "private"
+        if organization and organization.visibility == "private"
+        else repo.visibility,
         "role": role(db, repo, user),
-        "clone_url": f"{instance.public_url}/git/{owner.username}/{repo.name}.git",
-        "ssh_clone_url": ssh_clone_url(instance.public_url, owner.username, repo.name),
+        "clone_url": f"{instance.public_url}/git/{namespace}/{repo.name}.git",
+        "ssh_clone_url": ssh_clone_url(instance.public_url, namespace, repo.name),
     }
 
 
@@ -420,55 +404,74 @@ def dashboard(db=Depends(get_db), user=Depends(current_user)):
     }
 
 
+@router.get("/repository-owners")
+def repository_owners(db=Depends(get_db), user=Depends(current_user)):
+    organizations = db.scalars(
+        select(Organization)
+        .join(OrganizationMember, OrganizationMember.organization_id == Organization.id)
+        .where(
+            OrganizationMember.user_id == user.id,
+            OrganizationMember.role.in_(("owner", "maintainer")),
+        )
+        .order_by(Organization.name, Organization.id)
+    )
+    return {
+        "username": user.username,
+        "organizations": [
+            {"slug": item.slug, "name": item.name, "visibility": item.visibility}
+            for item in organizations
+        ],
+    }
+
+
+def store_repository(payload, db, user, *, importing=False):
+    with organization_access.mutation_lock if payload.organization else nullcontext():
+        organization = None
+        if payload.organization:
+            organization, _ = organization_access.access(
+                db, payload.organization, user, edit=True, lock=True
+            )
+            if organization.visibility == "private" and payload.visibility == "public":
+                raise HTTPException(422, "Repositories in private organizations must be private")
+        item = Repository(
+            owner_id=None if organization else user.id,
+            organization_id=organization.id if organization else None,
+            created_by_id=user.id,
+            name=payload.name,
+            description=payload.description,
+            visibility=payload.visibility,
+            default_branch=db.get(Instance, 1).default_branch,
+        )
+        db.add(item)
+        try:
+            db.flush()
+        except IntegrityError as error:
+            db.rollback()
+            raise HTTPException(
+                409, "A repository with this name already exists for this owner"
+            ) from error
+        try:
+            if importing:
+                repository_import.clone(item, payload)
+            else:
+                git.initialize(item, user, payload.initialize)
+            db.commit()
+        except Exception:
+            shutil.rmtree(git.path_for(item), ignore_errors=True)
+            db.rollback()
+            raise
+        return repo_data(db, item, user)
+
+
 @router.post("/repositories", status_code=201)
 def create_repository(payload: RepoCreate, db=Depends(get_db), user=Depends(current_user)):
-    item = Repository(
-        owner_id=user.id,
-        name=payload.name,
-        description=payload.description,
-        visibility=payload.visibility,
-        default_branch=db.get(Instance, 1).default_branch,
-    )
-    db.add(item)
-    try:
-        db.flush()
-    except IntegrityError as error:
-        db.rollback()
-        raise HTTPException(409, "A repository with this name already exists") from error
-    try:
-        git.initialize(item, user, payload.initialize)
-        db.commit()
-    except Exception:
-        shutil.rmtree(git.path_for(item), ignore_errors=True)
-        db.rollback()
-        raise
-    return repo_data(db, item, user)
+    return store_repository(payload, db, user)
 
 
 @router.post("/repositories/import", status_code=201)
 def import_repository(payload: RepoImport, db=Depends(get_db), user=Depends(current_user)):
     throttle(f"import:{user.id}")
-    item = Repository(
-        owner_id=user.id,
-        name=payload.name,
-        description=payload.description,
-        visibility=payload.visibility,
-        default_branch=db.get(Instance, 1).default_branch,
-    )
-    db.add(item)
-    try:
-        db.flush()
-    except IntegrityError as error:
-        db.rollback()
-        raise HTTPException(409, "A repository with this name already exists") from error
-    try:
-        repository_import.clone(item, payload)
-        db.commit()
-    except Exception:
-        shutil.rmtree(git.path_for(item), ignore_errors=True)
-        db.rollback()
-        raise
-    return repo_data(db, item, user)
+    return store_repository(payload, db, user, importing=True)
 
 
 @router.get("/repositories/{repo_id}")
@@ -481,6 +484,10 @@ def update_repository(
     repo_id: int, payload: RepoUpdate, db=Depends(get_db), user=Depends(current_user)
 ):
     item = access(db, repo_id, user, "maintain")
+    if item.organization_id and payload.visibility == "public":
+        organization = db.get(Organization, item.organization_id)
+        if organization.visibility == "private":
+            raise HTTPException(422, "Repositories in private organizations must be private")
     git.valid_branch(payload.default_branch)
     if payload.default_branch not in git.branches(item):
         raise HTTPException(400, "Push this branch before making it the default")

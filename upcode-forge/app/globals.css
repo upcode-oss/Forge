@@ -1899,6 +1899,18 @@ tfoot td {
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
   gap: 1rem;
 }
+.organization-repository-grid {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.organization-repository-grid .clone-bar {
+  min-width: 0;
+}
+.organization-repository-grid .clone-bar code {
+  overflow-x: auto;
+  min-width: 0;
+}
 .organization-card {
   display: flex;
   flex-direction: column;

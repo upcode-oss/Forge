@@ -39,9 +39,23 @@ def make_engine(url):
 
 def migrate(target):
     config = Config(str(Path(__file__).resolve().parent.parent / "alembic.ini"))
-    with target.begin() as connection:
-        config.attributes["connection"] = connection
-        command.upgrade(config, "head")
+    with target.connect() as connection:
+        sqlite = connection.dialect.name == "sqlite"
+        if sqlite:
+            # SQLite batch migrations rebuild referenced tables. Disable enforcement
+            # outside the transaction, then validate every reference before committing.
+            connection.exec_driver_sql("PRAGMA foreign_keys=OFF")
+            connection.commit()
+        try:
+            with connection.begin():
+                config.attributes["connection"] = connection
+                command.upgrade(config, "head")
+                if sqlite and connection.exec_driver_sql("PRAGMA foreign_key_check").first():
+                    raise RuntimeError("Database migration produced invalid foreign keys")
+        finally:
+            if sqlite:
+                connection.exec_driver_sql("PRAGMA foreign_keys=ON")
+                connection.commit()
 
 
 def load():

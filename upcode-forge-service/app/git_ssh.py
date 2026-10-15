@@ -17,7 +17,8 @@ from app import database
 from app.api import access
 from app.config import settings
 from app.git_service import path_for
-from app.models import Repository, SSHKey, User, now
+from app.models import SSHKey, User, now
+from app.repository_access import find_repository
 
 GIT_SSH_TIMEOUT = 120
 
@@ -60,7 +61,9 @@ def parse_command(command):
         raise HTTPException(400, "Invalid Git command") from error
     if len(parts) != 2 or parts[0] not in ("git-upload-pack", "git-receive-pack"):
         raise HTTPException(400, "Only Git upload-pack and receive-pack commands are allowed")
-    match = re.fullmatch(r"/?([a-z][a-z0-9_-]{0,49})/([a-z0-9][a-z0-9_-]{0,99})\.git", parts[1])
+    match = re.fullmatch(
+        r"/?((?:organizations/)?[a-z][a-z0-9_-]{0,49})/([a-z0-9][a-z0-9_-]{0,99})\.git", parts[1]
+    )
     if match is None:
         raise HTTPException(400, "Use the SSH clone URL shown by Forge")
     return parts[0], match[1], match[2]
@@ -81,14 +84,7 @@ def authorize(identity, command):
             writing = operation == "git-receive-pack"
             if writing and key.scope != "write":
                 raise HTTPException(403, "This SSH key is read-only")
-            repository = db.scalar(
-                select(Repository)
-                .join(User, User.id == Repository.owner_id)
-                .where(
-                    User.username == owner,
-                    Repository.name == name,
-                )
-            )
+            repository = find_repository(db, owner, name)
             if repository is None:
                 raise HTTPException(404, "Repository not found")
             access(db, repository.id, user, "write" if writing else "read")

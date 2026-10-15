@@ -5,11 +5,17 @@ import { useRouter } from "next/navigation";
 import { Download, Github, Gitlab } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { Field, Input, Select, Textarea } from "@/components/ui/form";
+import { Field, Input, Textarea } from "@/components/ui/form";
 import { api, json } from "@/services/api";
 import type { Repository } from "@/types/api";
+import {
+  RepositoryOwnerFields,
+  type RepositoryOrganization,
+} from "./repository-owner-fields";
 
-export function ImportRepositoryButton() {
+export function ImportRepositoryButton({
+  organization,
+}: { organization?: RepositoryOrganization } = {}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -24,7 +30,11 @@ export function ImportRepositoryButton() {
     try {
       const repo = await api<Repository>("/repositories/import", {
         method: "POST",
-        body: json({ ...values, token: values.token || null }),
+        body: json({
+          ...values,
+          organization: values.organization || null,
+          token: values.token || null,
+        }),
       });
       setOpen(false);
       router.push(`/repositories/${repo.id}`);
@@ -111,12 +121,7 @@ export function ImportRepositoryButton() {
           <Field label="Description">
             <Textarea name="description" maxLength={500} disabled={busy} />
           </Field>
-          <Field label="Visibility">
-            <Select name="visibility" defaultValue="private" disabled={busy}>
-              <option value="private">Private — members only</option>
-              <option value="public">Public — anyone can clone</option>
-            </Select>
-          </Field>
+          <RepositoryOwnerFields organization={organization} disabled={busy} />
           <Field
             label="Access token (optional)"
             hint="Required for private repositories. Use a token with repository read access. It is used once and never saved."

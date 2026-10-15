@@ -13,7 +13,8 @@ from app.api import access
 from app.config import settings
 from app.database import get_db
 from app.git_service import path_for
-from app.models import Repository, User
+from app.models import Organization
+from app.repository_access import find_repository
 from app.security import throttle, token_user
 
 router = APIRouter()
@@ -69,8 +70,7 @@ def execute(repository, suffix, request, incoming, outgoing, username):
     return headers, status
 
 
-@router.api_route("/git/{owner}/{name}.git/{suffix:path}", methods=["GET", "POST"])
-async def git_http(owner: str, name: str, suffix: str, request: Request, db=Depends(get_db)):
+async def transport(owner: str, name: str, suffix: str, request: Request, db):
     service = request.query_params.get("service", "")
     if request.method == "GET" and (
         suffix != "info/refs" or service not in ("git-upload-pack", "git-receive-pack")
@@ -104,16 +104,25 @@ async def git_http(owner: str, name: str, suffix: str, request: Request, db=Depe
                 "Invalid Git access token",
                 headers={"WWW-Authenticate": 'Basic realm="Upcode Forge"'},
             )
-    owner_user = db.scalar(select(User).where(User.username == owner))
-    repository = (
-        db.scalar(
-            select(Repository).where(Repository.owner_id == owner_user.id, Repository.name == name)
+    if owner.startswith("organizations/") and user is None:
+        organization = db.scalar(
+            select(Organization).where(Organization.slug == owner.removeprefix("organizations/"))
         )
-        if owner_user
-        else None
-    )
+        if organization is None or organization.visibility == "private":
+            # Also challenge for unknown organizations, allowing Git to request
+            # credentials without revealing whether a private namespace exists.
+            raise HTTPException(
+                401,
+                "Use your username and a Git access token",
+                headers={"WWW-Authenticate": 'Basic realm="Upcode Forge"'},
+            )
+    repository = find_repository(db, owner, name)
     if repository is None:
         raise HTTPException(404, "Repository not found")
+    # Parent visibility is checked before authentication prompts, so a guessed
+    # private organization's URL never reveals its existence.
+    if repository.organization_id and user is not None:
+        access(db, repository.id, user)
     if not user and (writing or repository.visibility != "public"):
         raise HTTPException(
             401,
@@ -148,3 +157,15 @@ async def git_http(owner: str, name: str, suffix: str, request: Request, db=Depe
             outgoing.close()
 
     return StreamingResponse(stream(), status_code=status, headers=headers)
+
+
+@router.api_route("/git/organizations/{owner}/{name}.git/{suffix:path}", methods=["GET", "POST"])
+async def organization_git_http(
+    owner: str, name: str, suffix: str, request: Request, db=Depends(get_db)
+):
+    return await transport(f"organizations/{owner}", name, suffix, request, db)
+
+
+@router.api_route("/git/{owner}/{name}.git/{suffix:path}", methods=["GET", "POST"])
+async def git_http(owner: str, name: str, suffix: str, request: Request, db=Depends(get_db)):
+    return await transport(owner, name, suffix, request, db)

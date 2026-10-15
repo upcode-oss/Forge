@@ -9,6 +9,7 @@ import {
   Plus,
   Search,
   ArrowUpRight,
+  Building2,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,10 @@ import { api, json } from "@/services/api";
 import { formatDate } from "@/lib/utils";
 import type { Repository } from "@/types/api";
 import { ImportRepositoryButton } from "./import-repository-button";
+import {
+  RepositoryOwnerFields,
+  type RepositoryOrganization,
+} from "./repository-owner-fields";
 
 export function RepositoryCards({
   repositories,
@@ -38,7 +43,11 @@ export function RepositoryCards({
           <Card>
             <div className="split">
               <div className="repo-symbol">
-                <FolderGit2 />
+                {repo.owner_type === "organization" ? (
+                  <Building2 />
+                ) : (
+                  <FolderGit2 />
+                )}
               </div>
               <span className="badge">
                 {repo.visibility === "private" ? <LockKeyhole /> : <Globe />}
@@ -62,7 +71,9 @@ export function RepositoryCards({
     </div>
   );
 }
-export function CreateRepositoryButton() {
+export function CreateRepositoryButton({
+  organization,
+}: { organization?: RepositoryOrganization } = {}) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -80,6 +91,7 @@ export function CreateRepositoryButton() {
           description: form.get("description"),
           visibility: form.get("visibility"),
           initialize: form.get("initialize") === "on",
+          organization: form.get("organization") || null,
         }),
       });
       setOpen(false);
@@ -118,12 +130,7 @@ export function CreateRepositoryButton() {
           <Field label="Description">
             <Textarea name="description" maxLength={500} />
           </Field>
-          <Field label="Visibility">
-            <Select name="visibility" defaultValue="private">
-              <option value="private">Private — members only</option>
-              <option value="public">Public — anyone can clone</option>
-            </Select>
-          </Field>
+          <RepositoryOwnerFields organization={organization} disabled={busy} />
           <label className="checkbox-field">
             <input type="checkbox" name="initialize" defaultChecked />
             Initialize with a README

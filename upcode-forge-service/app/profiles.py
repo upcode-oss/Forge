@@ -2,14 +2,15 @@ import json
 from datetime import UTC, date, datetime, time, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import exists, func, or_, select
+from sqlalchemy import case, func, select
 
 from app import git_service as git
 from app.api import attribute, repo_data
 from app.avatars import avatar_url
 from app.database import get_db
-from app.models import Comment, Membership, Repository, Ticket, User
+from app.models import Comment, Repository, Ticket, User
 from app.organizations import profile_organizations
+from app.repository_access import public_repositories, visible
 from app.schemas import ProfileUpdate
 from app.security import current_user, optional_user
 
@@ -76,22 +77,20 @@ def contributions(db, user, year):
             else:
                 totals[kind] += 1
 
-    public = Repository.visibility == "public"
-    eligible = or_(
-        public,
-        Repository.owner_id == user.id,
-        exists().where(Membership.repository_id == Repository.id, Membership.user_id == user.id),
-    )
+    public = public_repositories()
+    eligible = visible(user, admin_access=False)
+    effective_visibility = case((public, "public"), else_="private")
     for occurred, visibility in db.execute(
-        select(Repository.created_at, Repository.visibility).where(
-            Repository.owner_id == user.id,
+        select(Repository.created_at, effective_visibility).where(
+            func.coalesce(Repository.created_by_id, Repository.owner_id) == user.id,
+            eligible,
             Repository.created_at >= begin,
             Repository.created_at < finish,
         )
     ):
         add("repositories", occurred, visibility)
     for kind, occurred, visibility in db.execute(
-        select(Ticket.kind, Ticket.created_at, Repository.visibility)
+        select(Ticket.kind, Ticket.created_at, effective_visibility)
         .select_from(Ticket)
         .join(Repository, Repository.id == Ticket.repository_id)
         .where(
@@ -103,7 +102,7 @@ def contributions(db, user, year):
     ):
         add("pulls" if kind == "pull" else "issues", occurred, visibility)
     for occurred, visibility in db.execute(
-        select(Comment.created_at, Repository.visibility)
+        select(Comment.created_at, effective_visibility)
         .select_from(Comment)
         .join(Ticket, Ticket.id == Comment.ticket_id)
         .join(Repository, Repository.id == Ticket.repository_id)
@@ -120,8 +119,10 @@ def contributions(db, user, year):
     incomplete = False
     # Read actual Git history so imported commits and HTTP pushes appear immediately.
     # Public copies take precedence when a commit exists in both public and private repositories.
-    for repository in db.scalars(
-        select(Repository).where(eligible).order_by(public.desc(), Repository.id)
+    for repository, visibility in db.execute(
+        select(Repository, effective_visibility)
+        .where(eligible)
+        .order_by(public.desc(), Repository.id)
     ):
         try:
             output = git.run(
@@ -142,7 +143,7 @@ def contributions(db, user, year):
                     add(
                         "commits",
                         datetime.fromtimestamp(int(timestamp), UTC),
-                        repository.visibility,
+                        visibility,
                     )
                     seen.add(sha)
         except (HTTPException, OSError, ValueError, OverflowError):

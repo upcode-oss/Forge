@@ -482,6 +482,6 @@ def test_migration_preserves_existing_accounts(tmp_path):
         assert user.bio == "" and user.company == "" and user.public_email is None
         assert json.loads(user.social_links) == []
         assert user.avatar is None and user.avatar_digest is None
-        assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0005"
+        assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0006"
         assert db.scalar(select(Repository)) is None
     target.dispose()
