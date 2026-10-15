@@ -7,6 +7,31 @@ export type User = {
   is_active: boolean;
   created_at: string;
 };
+export type SocialLink = { label: string; url: string };
+export type ProfileFields = {
+  username: string;
+  display_name: string;
+  bio: string;
+  company: string;
+  location: string;
+  website: string;
+  public_email: string | null;
+  social_links: SocialLink[];
+  created_at: string;
+};
+export type ProfileActivity = {
+  year: number;
+  days: { date: string; count: number }[];
+  totals: { commits: number; repositories: number; issues: number; pulls: number; comments: number };
+  total: number;
+  longest_streak: number;
+  incomplete: boolean;
+};
+export type PublicProfile = ProfileFields & {
+  repository_count: number;
+  repositories: Repository[];
+  activity: ProfileActivity;
+};
 export type Instance = {
   name: string;
   public_url: string;

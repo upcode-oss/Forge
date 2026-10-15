@@ -6,6 +6,7 @@ import type { User } from "@/types/api";
 import { ErrorState, Loading } from "@/components/states";
 
 const AuthContext = createContext<User | null>(null);
+const AuthUpdateContext = createContext<((user: User) => void) | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -32,10 +33,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   if (error)
     return <ErrorState message={error} retry={() => location.reload()} />;
   if (!user) return <Loading />;
-  return <AuthContext.Provider value={user}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={user}>
+      <AuthUpdateContext.Provider value={setUser}>{children}</AuthUpdateContext.Provider>
+    </AuthContext.Provider>
+  );
 }
 export function useAuth() {
   const user = useContext(AuthContext);
   if (!user) throw new Error("Missing auth provider");
   return user;
+}
+export function useUpdateAuth() {
+  const update = useContext(AuthUpdateContext);
+  if (!update) throw new Error("Missing auth provider");
+  return update;
 }

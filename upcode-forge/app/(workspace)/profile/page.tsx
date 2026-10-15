@@ -1,7 +1,7 @@
 "use client";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { KeyRound, Plus, Trash2, UserRound } from "lucide-react";
+import { KeyRound, Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Field, Input, Select } from "@/components/ui/form";
 import { Dialog, ConfirmDialog } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 import { ErrorState, Loading } from "@/components/states";
-import { useAuth } from "@/features/auth/auth-context";
+import { ProfileEditor } from "@/features/profile/profile-editor";
 import { useResource } from "@/hooks/use-resource";
 import { api, json } from "@/services/api";
 import { formatDate } from "@/lib/utils";
@@ -17,7 +17,6 @@ import { formatDate } from "@/lib/utils";
 type Token = { id: number; name: string; scope: string; expires_at: string };
 export default function Profile() {
   const router = useRouter();
-  const user = useAuth();
   const { notify } = useToast();
   const tokens = useResource<Token[]>("/tokens");
   const [open, setOpen] = useState(false);
@@ -76,23 +75,7 @@ export default function Profile() {
         description="Manage your identity and Git authentication."
       />
       <div className="content-grid">
-        <Card>
-          <CardHeader title="Your profile" />
-          <div className="profile-summary">
-            <div className="avatar">
-              <UserRound />
-            </div>
-            <div>
-              <h2>{user.display_name}</h2>
-              <p className="muted">
-                @{user.username} · {user.email}
-              </p>
-              <span className="badge">
-                {user.is_admin ? "Administrator" : "Member"}
-              </span>
-            </div>
-          </div>
-        </Card>
+        <ProfileEditor />
         <Card>
           <CardHeader
             title="Change password"

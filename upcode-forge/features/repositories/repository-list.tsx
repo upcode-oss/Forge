@@ -20,6 +20,7 @@ import { useResource } from "@/hooks/use-resource";
 import { api, json } from "@/services/api";
 import { formatDate } from "@/lib/utils";
 import type { Repository } from "@/types/api";
+import { ImportRepositoryButton } from "./import-repository-button";
 
 export function RepositoryCards({
   repositories,
@@ -164,7 +165,7 @@ export function RepositoryList() {
       <PageHeader
         title="Repositories"
         description="Build, share, and collaborate on your code."
-        actions={<CreateRepositoryButton />}
+        actions={<><ImportRepositoryButton /><CreateRepositoryButton /></>}
       />
       <div className="repo-toolbar">
         <div className="search-input">

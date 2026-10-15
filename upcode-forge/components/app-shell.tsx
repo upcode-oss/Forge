@@ -3,6 +3,7 @@ import {
   BarChart3,
   FolderGit2,
   GitPullRequest,
+  Globe,
   LogOut,
   Menu,
   Moon,
@@ -99,6 +100,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </>
           )}
           <div className="nav-category">Account</div>
+          {navigation(`/u/${user.username}`, "Public profile", Globe)}
           {navigation("/profile", "Profile & Access Tokens", UserRound)}
           <div className="sidebar-note">
             <GitPullRequest />
@@ -130,7 +132,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </span>
           </button>
           <div className="split">
-            <Link href="/profile" className="user-chip">
+            <Link href={`/u/${user.username}`} className="user-chip">
               <div className="avatar">
                 {user.display_name.slice(0, 2).toUpperCase()}
               </div>
