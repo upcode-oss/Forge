@@ -13,7 +13,7 @@ from alembic import command
 from app import database, git_service, repository_import
 from app.config import settings
 from app.main import app
-from app.models import Repository, User
+from app.models import Membership, Repository, User
 
 
 def run_git(path, *args, env=None):
@@ -239,7 +239,9 @@ def test_calendar_reflects_new_commits_and_visibility_immediately(admin, reposit
         == 200
     )
     profile = admin.get("/api/v1/profiles/admin").json()
-    assert profile["activity"]["total"] == 0 and profile["repositories"] == []
+    assert profile["activity"]["total"] == 3 and profile["repositories"] == []
+    assert profile["activity"]["private_total"] == 3
+    assert profile["activity"]["totals"]["commits"] == 0
 
 
 def test_public_profile_editing_privacy_activity_and_deactivation(admin):
@@ -288,8 +290,10 @@ def test_public_profile_editing_privacy_activity_and_deactivation(admin):
             "pulls": 0,
             "comments": 1,
         }
-        assert data["activity"]["total"] == 4 and not data["activity"]["incomplete"]
-        assert sum(day["count"] for day in data["activity"]["days"]) == 4
+        assert data["activity"]["total"] == 8 and not data["activity"]["incomplete"]
+        assert data["activity"]["private_total"] == 4
+        assert sum(day["count"] for day in data["activity"]["days"]) == 8
+        assert sum(day["private_count"] for day in data["activity"]["days"]) == 4
         assert data["activity"]["longest_streak"] == 1
         assert visitor.get("/api/v1/profiles/missing").status_code == 404
         assert visitor.get("/api/v1/profiles/admin?year=9999").status_code == 422
@@ -326,28 +330,109 @@ def test_profile_validation(admin, change):
     assert admin.put("/api/v1/profile", json={"display_name": "Admin", **change}).status_code == 422
 
 
-def test_imported_history_counts_in_correct_year_and_deduplicates(admin, source, local_import):
+@pytest.mark.parametrize("visibilities", [("private", "public"), ("private", "private")])
+def test_imported_history_counts_in_correct_year_and_deduplicates(
+    admin, source, local_import, visibilities
+):
     occurred = datetime.now(UTC) - timedelta(days=400)
     env = {"GIT_AUTHOR_DATE": occurred.isoformat(), "GIT_COMMITTER_DATE": occurred.isoformat()}
     run_git(source, "commit", "--allow-empty", "-m", "Historical contribution", env=env)
     run_git(source, "branch", "another-copy")
-    for name in ("first", "second"):
+    for name, visibility in zip(("first", "second"), visibilities, strict=True):
         result = admin.post(
             "/api/v1/repositories/import",
             json={
                 "name": name,
                 "source_url": "https://github.com/owner/repo",
-                "visibility": "public",
+                "visibility": visibility,
             },
         )
         assert result.status_code == 201, result.text
     data = admin.get(f"/api/v1/profiles/admin?year={occurred.year}").json()
-    assert data["activity"]["totals"]["commits"] == 1
+    is_public = "public" in visibilities
+    assert data["activity"]["totals"]["commits"] == (1 if is_public else 0)
+    assert data["activity"]["private_total"] == (0 if is_public else 1)
+    assert data["activity"]["total"] == 1
     day = next(
         day for day in data["activity"]["days"] if day["date"] == occurred.date().isoformat()
     )
     assert day["count"] == 1
-    assert admin.get("/api/v1/profiles/admin").json()["activity"]["totals"]["commits"] == 1
+    current = admin.get("/api/v1/profiles/admin").json()["activity"]
+    assert current["totals"]["commits"] == (1 if is_public else 0)
+    assert current["total"] == 3
+
+
+def test_private_contributions_respect_profile_owners_memberships(admin, repository):
+    alice_id = admin.post(
+        "/api/v1/users",
+        json={
+            "username": "alice",
+            "display_name": "Alice",
+            "email": "alice@example.com",
+            "password": "alice-password-long",
+        },
+    ).json()["id"]
+    rid = repository["id"]
+    with Session(database.engine) as db:
+        path = git_service.path_for(db.get(Repository, rid))
+        tree = run_git(path, "rev-parse", "HEAD^{tree}").decode().strip()
+        sha = (
+            run_git(
+                path,
+                "-c",
+                "user.name=Alice",
+                "-c",
+                "user.email=alice@example.com",
+                "commit-tree",
+                tree,
+                "-p",
+                "HEAD",
+                "-m",
+                "Confidential commit",
+            )
+            .decode()
+            .strip()
+        )
+        run_git(path, "update-ref", "refs/heads/main", sha)
+    # Matching a commit email alone does not expose contributions in an inaccessible private repo.
+    assert admin.get("/api/v1/profiles/alice").json()["activity"]["total"] == 0
+    member = admin.put(
+        f"/api/v1/repositories/{rid}/members", json={"username": "alice", "role": "write"}
+    )
+    assert member.status_code == 200
+    alice = TestClient(app, headers={"X-Forge-Request": "1"})
+    try:
+        alice.post(
+            "/api/v1/auth/login", json={"username": "alice", "password": "alice-password-long"}
+        )
+        ticket = alice.post(
+            f"/api/v1/repositories/{rid}/tickets", json={"title": "Secret issue"}
+        ).json()
+        alice.post(
+            f"/api/v1/repositories/{rid}/tickets/{ticket['id']}/comments",
+            json={"body": "Secret comment"},
+        )
+        response = admin.get("/api/v1/profiles/alice")
+        data = response.json()
+        assert data["activity"]["total"] == 3 and data["activity"]["private_total"] == 3
+        assert data["repositories"] == [] and data["repository_count"] == 0
+        assert sum(data["activity"]["totals"].values()) == 0
+        assert sum(day["private_count"] for day in data["activity"]["days"]) == 3
+        for secret in (
+            sha,
+            "Confidential commit",
+            "Secret issue",
+            "Secret comment",
+            "alice@example.com",
+            '"demo"',
+        ):
+            assert secret not in response.text
+        with Session(database.engine) as db:
+            member_id = db.scalar(select(Membership.id).where(Membership.user_id == alice_id))
+        assert admin.delete(f"/api/v1/repositories/{rid}/members/{member_id}").status_code == 200
+        assert admin.get("/api/v1/profiles/alice").json()["activity"]["total"] == 0
+    finally:
+        alice.close()
 
 
 def test_migration_preserves_existing_accounts(tmp_path):
@@ -368,6 +453,7 @@ def test_migration_preserves_existing_accounts(tmp_path):
         assert user.password_hash == "preserved-hash" and user.email == "legacy@example.com"
         assert user.bio == "" and user.company == "" and user.public_email is None
         assert json.loads(user.social_links) == []
-        assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0002"
+        assert user.avatar is None and user.avatar_digest is None
+        assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0003"
         assert db.scalar(select(Repository)) is None
     target.dispose()

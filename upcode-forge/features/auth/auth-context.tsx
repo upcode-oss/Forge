@@ -1,12 +1,21 @@
 "use client";
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/services/api";
 import type { User } from "@/types/api";
 import { ErrorState, Loading } from "@/components/states";
 
 const AuthContext = createContext<User | null>(null);
-const AuthUpdateContext = createContext<((user: User) => void) | null>(null);
+const AuthUpdateContext = createContext<Dispatch<
+  SetStateAction<User | null>
+> | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);

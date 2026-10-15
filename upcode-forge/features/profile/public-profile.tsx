@@ -16,6 +16,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar } from "@/components/avatar";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Select } from "@/components/ui/form";
 import { Empty, ErrorState, Loading } from "@/components/states";
@@ -72,9 +73,11 @@ export function PublicProfile({ username }: { username: string }) {
             <div className="public-profile-grid">
               <aside>
                 <Card className="public-profile-identity">
-                  <div className="public-profile-avatar" aria-hidden="true">
-                    {profile.display_name.slice(0, 2).toUpperCase()}
-                  </div>
+                  <Avatar
+                    name={profile.display_name}
+                    src={profile.avatar_url}
+                    className="public-profile-avatar"
+                  />
                   <h1>{profile.display_name}</h1>
                   <p className="muted public-profile-handle">
                     @{profile.username}
@@ -174,7 +177,7 @@ export function PublicProfile({ username }: { username: string }) {
                 <Card>
                   <CardHeader
                     title="Contribution activity"
-                    description="Commits, repositories, issues, pull requests and comments in public repositories."
+                    description="Public and private contributions. Private repository details stay hidden."
                     action={
                       <Select
                         aria-label="Contribution year"
@@ -195,7 +198,11 @@ export function PublicProfile({ username }: { username: string }) {
                     }
                   />
                   <ActivityCalendar activity={profile.activity} />
-                  <div className="activity-breakdown muted small">
+                  <div
+                    className="activity-breakdown muted small"
+                    aria-label="Public contributions by type and private contribution count"
+                  >
+                    <span>Public:</span>
                     <span>{profile.activity.totals.commits} commits</span>
                     <span>
                       {profile.activity.totals.repositories} repositories
@@ -203,6 +210,9 @@ export function PublicProfile({ username }: { username: string }) {
                     <span>{profile.activity.totals.issues} issues</span>
                     <span>{profile.activity.totals.pulls} pull requests</span>
                     <span>{profile.activity.totals.comments} comments</span>
+                    <span className="private-contributions">
+                      {profile.activity.private_total} private contributions
+                    </span>
                   </div>
                 </Card>
                 <section aria-labelledby="public-repositories-heading">

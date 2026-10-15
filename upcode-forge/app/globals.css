@@ -842,6 +842,43 @@ svg {
   object-fit: cover;
   width: 100%;
 }
+.avatar {
+  overflow: hidden;
+}
+.avatar-picture {
+  border-radius: inherit;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+.avatar-editor {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+.profile-editor-avatar {
+  width: 5rem;
+  height: 5rem;
+  font-size: 1.5rem;
+}
+.avatar-editor-fields {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 1;
+}
+.avatar-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.private-contributions {
+  color: var(--foreground);
+  font-weight: 500;
+}
 .presence-dot {
   border: 2px solid var(--card);
   border-radius: 50%;

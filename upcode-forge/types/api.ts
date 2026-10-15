@@ -3,6 +3,7 @@ export type User = {
   username: string;
   email: string;
   display_name: string;
+  avatar_url: string | null;
   is_admin: boolean;
   is_active: boolean;
   created_at: string;
@@ -11,6 +12,7 @@ export type SocialLink = { label: string; url: string };
 export type ProfileFields = {
   username: string;
   display_name: string;
+  avatar_url: string | null;
   bio: string;
   company: string;
   location: string;
@@ -21,7 +23,7 @@ export type ProfileFields = {
 };
 export type ProfileActivity = {
   year: number;
-  days: { date: string; count: number }[];
+  days: { date: string; count: number; private_count: number }[];
   totals: {
     commits: number;
     repositories: number;
@@ -30,6 +32,7 @@ export type ProfileActivity = {
     comments: number;
   };
   total: number;
+  private_total: number;
   longest_streak: number;
   incomplete: boolean;
 };

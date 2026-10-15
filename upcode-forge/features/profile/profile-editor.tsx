@@ -12,6 +12,7 @@ import { useAuth, useUpdateAuth } from "@/features/auth/auth-context";
 import { useResource } from "@/hooks/use-resource";
 import { api, json } from "@/services/api";
 import type { ProfileFields, SocialLink } from "@/types/api";
+import { AvatarUploader } from "./avatar-uploader";
 
 function ProfileForm({
   profile,
@@ -43,7 +44,9 @@ function ProfileForm({
           social_links: links,
         }),
       });
-      updateAuth({ ...user, display_name: updated.display_name });
+      updateAuth((current) =>
+        current ? { ...current, display_name: updated.display_name } : current,
+      );
       notify("Public profile saved");
       saved();
     } catch (error) {
@@ -214,6 +217,7 @@ export function ProfileEditor() {
           </Button>
         }
       />
+      <AvatarUploader />
       {profile.loading ? (
         <Loading />
       ) : profile.error ? (

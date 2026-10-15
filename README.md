@@ -15,7 +15,7 @@ A self-hosted Git collaboration platform with repository hosting, code browsing,
 
 - 📦 **Git Repository Hosting** - Create public and private bare Git repositories; clone, fetch, and push over HTTP(S)
 - 📥 **Repository Imports** - Import GitHub.com and GitLab.com repositories, including Git history, branches, and tags; optional tokens support private sources
-- 👤 **Public Profiles** - Share your bio, workplace, location, public email, website, social links, public repositories, and a yearly contribution calendar
+- 👤 **Public Profiles** - Upload a profile picture and share your bio, workplace, location, public email, website, social links, public repositories, and a yearly calendar including anonymized private contributions
 - 🌿 **Code & History** - Branch selection, directory navigation, text previews, Markdown READMEs, commit history, and diffs
 - 🐛 **Issues** - Track work with descriptions, comments, and open/closed states
 - 🔀 **Pull Requests** - Compare branches, discuss changes, and merge without conflicts

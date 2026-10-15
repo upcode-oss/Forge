@@ -102,3 +102,111 @@ test("the public profile route renders its workspace link and loading state", ()
   assert.match(markup, /role="status"/);
   assert.match(markup, /Loading/);
 });
+
+test("loaded public profiles render avatars and private contribution counts", () => {
+  const resource = loadTypeScript(resolve(root, "hooks/use-resource.ts"));
+  const original = resource.useResource;
+  const { ToastProvider } = loadTypeScript(
+    resolve(root, "components/ui/toast.tsx"),
+  );
+  const { PublicProfile } = loadTypeScript(
+    resolve(root, "features/profile/public-profile.tsx"),
+  );
+  const avatar = "/api/v1/avatars/hackandcode/avatar-hash.png";
+  resource.useResource = () => ({
+    loading: false,
+    error: "",
+    data: {
+      username: "hackandcode",
+      display_name: "Hack and Code",
+      avatar_url: avatar,
+      bio: "Building Forge",
+      company: "",
+      location: "",
+      website: "",
+      public_email: null,
+      social_links: [],
+      created_at: "2026-01-01T00:00:00Z",
+      repository_count: 0,
+      repositories: [],
+      activity: {
+        year: 2026,
+        total: 5,
+        private_total: 3,
+        longest_streak: 1,
+        incomplete: false,
+        days: [{ date: "2026-01-01", count: 5, private_count: 3 }],
+        totals: {
+          commits: 2,
+          repositories: 0,
+          issues: 0,
+          pulls: 0,
+          comments: 0,
+        },
+      },
+    },
+  });
+  try {
+    const markup = renderToStaticMarkup(
+      React.createElement(
+        ToastProvider,
+        null,
+        React.createElement(PublicProfile, { username: "hackandcode" }),
+      ),
+    );
+    assert.ok(markup.includes(`src="${avatar}"`));
+    assert.match(markup, /3 private contributions/);
+    assert.match(markup, /5 contributions on 2026-01-01 \(3 private\)/);
+    assert.match(markup, /Public and private contributions/);
+  } finally {
+    resource.useResource = original;
+  }
+});
+
+test("the profile editor renders image upload and removal beside profile fields", () => {
+  const auth = loadTypeScript(resolve(root, "features/auth/auth-context.tsx"));
+  const resource = loadTypeScript(resolve(root, "hooks/use-resource.ts"));
+  const originalAuth = auth.useAuth;
+  const originalUpdate = auth.useUpdateAuth;
+  const originalResource = resource.useResource;
+  const { ToastProvider } = loadTypeScript(
+    resolve(root, "components/ui/toast.tsx"),
+  );
+  const { ProfileEditor } = loadTypeScript(
+    resolve(root, "features/profile/profile-editor.tsx"),
+  );
+  const profile = {
+    username: "hackandcode",
+    display_name: "Hack and Code",
+    avatar_url: "/api/v1/avatars/hackandcode/hash.png",
+    email: "account@example.com",
+    bio: "",
+    company: "",
+    location: "",
+    website: "",
+    public_email: null,
+    social_links: [],
+  };
+  auth.useAuth = () => profile;
+  auth.useUpdateAuth = () => () => {};
+  resource.useResource = () => ({ loading: false, error: "", data: profile });
+  try {
+    const markup = renderToStaticMarkup(
+      React.createElement(
+        ToastProvider,
+        null,
+        React.createElement(ProfileEditor),
+      ),
+    );
+    assert.match(markup, /type="file"/);
+    assert.match(markup, /accept="image\/png,image\/jpeg,image\/webp"/);
+    assert.match(markup, /Replace picture/);
+    assert.match(markup, /Remove picture/);
+    assert.match(markup, /Save public profile/);
+    assert.match(markup, /href="\/u\/hackandcode"/);
+  } finally {
+    auth.useAuth = originalAuth;
+    auth.useUpdateAuth = originalUpdate;
+    resource.useResource = originalResource;
+  }
+});

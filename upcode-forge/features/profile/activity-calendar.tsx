@@ -71,7 +71,7 @@ export function ActivityCalendar({ activity }: { activity: ProfileActivity }) {
                   <span
                     key={day.date}
                     className={`activity-cell activity-level-${day.count ? Math.max(1, Math.ceil((day.count / maximum) * 4)) : 0}`}
-                    title={`${day.count} contribution${day.count === 1 ? "" : "s"} on ${day.date}`}
+                    title={`${day.count} contribution${day.count === 1 ? "" : "s"} on ${day.date}${day.private_count ? ` (${day.private_count} private)` : ""}`}
                   />
                 ) : (
                   <span
@@ -85,7 +85,7 @@ export function ActivityCalendar({ activity }: { activity: ProfileActivity }) {
         </div>
       </div>
       <div className="activity-footer muted small">
-        <span>Public contributions · UTC</span>
+        <span>Public & private contributions · UTC</span>
         <div
           className="activity-legend"
           aria-label="Green tiles show increasing contribution counts"
@@ -109,13 +109,12 @@ export function ActivityCalendar({ activity }: { activity: ProfileActivity }) {
               <li key={day.date}>
                 <time dateTime={day.date}>{day.date}</time>: {day.count}{" "}
                 contribution{day.count === 1 ? "" : "s"}
+                {day.private_count > 0 && ` (${day.private_count} private)`}
               </li>
             ))}
           </ul>
         ) : (
-          <p className="muted">
-            No public contributions in {activity.year} yet.
-          </p>
+          <p className="muted">No contributions in {activity.year} yet.</p>
         )}
       </details>
       {activity.incomplete && (

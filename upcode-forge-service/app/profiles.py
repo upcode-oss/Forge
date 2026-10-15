@@ -91,7 +91,8 @@ def contributions(db, user, year):
         add("repositories", occurred, visibility)
     for kind, occurred, visibility in db.execute(
         select(Ticket.kind, Ticket.created_at, Repository.visibility)
-        .join(Repository)
+        .select_from(Ticket)
+        .join(Repository, Repository.id == Ticket.repository_id)
         .where(
             eligible,
             Ticket.author_id == user.id,
@@ -102,8 +103,9 @@ def contributions(db, user, year):
         add("pulls" if kind == "pull" else "issues", occurred, visibility)
     for occurred, visibility in db.execute(
         select(Comment.created_at, Repository.visibility)
-        .join(Ticket)
-        .join(Repository)
+        .select_from(Comment)
+        .join(Ticket, Ticket.id == Comment.ticket_id)
+        .join(Repository, Repository.id == Ticket.repository_id)
         .where(
             eligible,
             Comment.author_id == user.id,

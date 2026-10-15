@@ -19,6 +19,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Avatar } from "@/components/avatar";
 import { useAuth } from "@/features/auth/auth-context";
 import { useResource } from "@/hooks/use-resource";
 import { api } from "@/services/api";
@@ -133,9 +134,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
           <div className="split">
             <Link href={`/u/${user.username}`} className="user-chip">
-              <div className="avatar">
-                {user.display_name.slice(0, 2).toUpperCase()}
-              </div>
+              <Avatar name={user.display_name} src={user.avatar_url} />
               <div>
                 <strong>{user.display_name}</strong>
                 <span>@{user.username}</span>
