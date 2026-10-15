@@ -17,7 +17,7 @@ A self-hosted Git collaboration platform with repository hosting, code browsing,
 - 🔐 **SSH Git Access** - Register SSH public keys, choose read-only or read/write scope, and clone, fetch, or push through a Git-only SSH service
 - 📥 **Repository Imports** - Import GitHub.com and GitLab.com repositories, including Git history, branches, and tags; optional tokens support private sources
 - 👤 **Public Profiles** - Upload a profile picture and share your bio, workplace, location, public email, website, social links, public repositories, and a yearly calendar including anonymized private contributions
-- 🏢 **Organizations** - Create public or private organizations with profile pictures, contact email, social links, and Owner/Maintainer/Reader memberships; discover public teams through search and see organization pictures on member profiles
+- 🏢 **Organizations** - Create public or private organizations with their own repositories, profile pictures, contact email, social links, and Owner/Maintainer/Reader memberships; discover public teams through search and see organization pictures on member profiles
 - 🌿 **Code & History** - Branch selection, directory navigation, text previews, Markdown READMEs, commit history, and diffs
 - 🐛 **Issues** - Track work with descriptions, comments, and open/closed states
 - 🔀 **Pull Requests** - Compare branches, discuss changes, and merge without conflicts

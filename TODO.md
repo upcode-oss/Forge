@@ -6,7 +6,7 @@
 - Repository deletion/transfer with recovery and audit history
 - Webhooks, CI integrations, and runners
 - Automated email notifications and password reset workflows
-- Organization-owned repository namespaces and team-based repository permissions
+- Subteams within organizations and team-specific repository permissions
 - Distributed authentication throttling with trusted proxy client addresses
 - Background Git jobs, quotas, and large-repository operation limits
 - Indexed contribution history for large installations; self-hosted import providers and background imports

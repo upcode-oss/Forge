@@ -15,6 +15,7 @@ The FastAPI application lives in `upcode-forge-service/app/`:
 | `security.py` | Argon2 passwords, hashed session/token secrets, authentication, throttling |
 | `api.py` | Setup, authentication, administration, repository access, and collaboration |
 | `organizations.py` | Organization profiles, discovery, private visibility, avatars, and role-based memberships |
+| `organization_access.py`, `repository_access.py` | Shared organization and repository access checks, inherited roles, and Git namespace resolution |
 | `git_service.py` | Git initialization, browsing, diffs, and merges |
 | `git_http.py` | Authorized Git Smart HTTP transport |
 | `ssh_support.py`, `ssh_keys.py` | Public key validation, fingerprints, host keys, key management, and SSH clone URLs |
@@ -31,7 +32,7 @@ Git authenticates using HTTP Basic with a username and an expiring personal acce
 
 Git SSH uses [AsyncSSH](https://asyncssh.readthedocs.io/en/latest/api.html) in the backend process, with a persistent Ed25519 host key and public-key-only authentication as `git`. The cryptography library validates and canonicalizes uploaded OpenSSH public keys; SHA-256 fingerprints are unique across accounts. Read-only keys further narrow account permissions. Every command rechecks the key id, account id, fingerprint, current account state, key scope, and repository permissions. This prevents an old authenticated connection from acquiring a different identity if a deleted SQL key id is reused. Password, keyboard-interactive, host-based and GSS authentication, shells, PTYs, file transfer, and all forwarding are disabled. A command-free connection prints an authentication greeting and exits.
 
-The SSH command parser accepts only `git-upload-pack` or `git-receive-pack` with an `owner/name.git` path. Database ids determine the actual repository path. Git starts without a shell, with server-controlled arguments and an environment that does not inherit client-provided configuration. Pack streams use bounded chunks and backpressure; oversized input, timeout, disconnect, and cancellation stop the Git process group. Listener shutdown closes active SSH connections before database disposal. Keys are stored in SQL; the private host key is stored only in the persistent data volume.
+The SSH command parser accepts only `git-upload-pack` or `git-receive-pack` with an `owner/name.git` or `organizations/slug/name.git` path. Database ids determine the actual repository path. Git starts without a shell, with server-controlled arguments and an environment that does not inherit client-provided configuration. Pack streams use bounded chunks and backpressure; oversized input, timeout, disconnect, and cancellation stop the Git process group. Listener shutdown closes active SSH connections before database disposal. Keys are stored in SQL; the private host key is stored only in the persistent data volume.
 
 | Repository role | Permissions |
 | --- | --- |
@@ -56,7 +57,13 @@ The last active Owner cannot leave, be removed, or be demoted. Membership mutati
 
 Public organizations are searchable by name, URL name and description under `/explore`; results are paginated. Members see all their own organizations, including private ones, under `/organizations`. Private organization profiles, member lists, and avatar URLs return 404 to outsiders, including instance administrators without membership. All these API responses disable caching. Member profiles show organization avatar links, filtered by the viewer's access; anonymous visitors see only public organizations. Organization contact details follow the same visibility setting. Picture uploads reuse the account image limits and normalization (PNG/JPEG/WebP, 5 MiB, 16 million pixels, normalized to 256 × 256 PNG without metadata).
 
-Organizations group accounts and present a shared profile. Repository ownership and repository collaborator permissions remain separate; an organization role alone does not grant access to a member's repositories. Organization-owned repository namespaces remain on the roadmap.
+Organizations can own repositories. Owners and Maintainers can create, import, and manage organization repositories; Readers inherit read access. The strongest of inherited and explicit repository grants applies. Organization roles grant no access to members' personal repositories. The owner selector in repository creation/import lists the account and all organizations where it has Owner or Maintainer access. Organization pages list accessible repositories with HTTPS/SSH clone controls.
+
+Organization Git paths use `/git/organizations/<slug>/<name>.git` over HTTP and `organizations/<slug>/<name>.git` over SSH. Personal paths stay unchanged; an existing user and organization can have identical names without collisions. SQL enforces exactly one user or organization owner, and names are unique within that owner's namespace. Creation is attributed to the initiating account for contribution activity, while repositories are listed on their owning organization's profile.
+
+A private organization requires membership for all repository access, including explicit repository grants and instance administrators. New repositories in private organizations must be private. If a public organization becomes private, its existing public repositories are effectively private until the organization is public again; contribution counts are reclassified as private as well. Git HTTP challenges unauthenticated requests to both private and unknown organization namespaces identically so Git clients can prompt for credentials. Authenticated outsiders receive 404. Removing membership or changing roles applies to subsequent API, HTTP and SSH commands. Organizations containing repositories cannot be deleted, preserving their Git data and relationships.
+
+Migration `0006` preserves existing repository IDs, ownership, collaborators, issues, comments and SSH keys. SQLite batch migrations temporarily suspend foreign-key enforcement on the migration connection, validate all references before commit, and restore enforcement before returning the connection to the pool. PostgreSQL/MySQL use their native table alterations.
 
 ## Git operations
 

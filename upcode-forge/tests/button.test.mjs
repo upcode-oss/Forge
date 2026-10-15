@@ -310,6 +310,8 @@ test("workspace organization pages render separate profile and upload forms for 
       assert.equal(markup.includes('type="file"'), role !== "reader");
       assert.equal(markup.includes("Save organization"), role !== "reader");
       assert.equal(markup.includes("Delete organization"), role === "owner");
+      assert.equal(markup.includes("New repository"), role !== "reader");
+      assert.equal(markup.includes("Import repository"), role !== "reader");
       assert.match(markup, /href="\/o\/upcode"/);
       let depth = 0;
       for (const tag of markup.matchAll(/<\/?form\b/g)) {
@@ -379,6 +381,121 @@ test("organization forms restrict visibility changes to Owners and keep avatar u
   assert.match(create, /name="slug"/);
   assert.match(create, /value="private" selected=""/);
   assert.match(create, /Create organization/);
+});
+
+test("repository owner controls offer personal and manageable organization owners", () => {
+  const resource = loadTypeScript(resolve(root, "hooks/use-resource.ts"));
+  const original = resource.useResource;
+  const { RepositoryOwnerFields } = loadTypeScript(
+    resolve(root, "features/repositories/repository-owner-fields.tsx"),
+  );
+  resource.useResource = (path) => {
+    assert.equal(path, "/repository-owners");
+    return {
+      loading: false,
+      error: "",
+      reload() {},
+      data: {
+        username: "admin",
+        organizations: [
+          { slug: "upcode", name: "Upcode", visibility: "public" },
+        ],
+      },
+    };
+  };
+  try {
+    const markup = renderToStaticMarkup(
+      React.createElement(RepositoryOwnerFields),
+    );
+    assert.match(markup, /name="organization"/);
+    assert.match(markup, /admin \(your account\)/);
+    assert.match(markup, /value="upcode"/);
+    assert.match(markup, /value="public"/);
+  } finally {
+    resource.useResource = original;
+  }
+});
+
+for (const visibility of ["private", "public"]) {
+  test(`repository owner controls keep a fixed ${visibility} organization and constrain visibility`, () => {
+    const resource = loadTypeScript(resolve(root, "hooks/use-resource.ts"));
+    const original = resource.useResource;
+    const { RepositoryOwnerFields } = loadTypeScript(
+      resolve(root, "features/repositories/repository-owner-fields.tsx"),
+    );
+    resource.useResource = (path) => {
+      assert.equal(path, null);
+      return { loading: false, error: "", data: null };
+    };
+    try {
+      const markup = renderToStaticMarkup(
+        React.createElement(RepositoryOwnerFields, {
+          organization: { ...organization, visibility },
+        }),
+      );
+      assert.match(markup, /type="hidden" name="organization" value="upcode"/);
+      assert.equal(markup.includes('value="public"'), visibility === "public");
+      assert.match(markup, /value="private" selected=""/);
+    } finally {
+      resource.useResource = original;
+    }
+  });
+}
+
+test("organization repositories render clone URLs and keep Reader actions read only", () => {
+  const resource = loadTypeScript(resolve(root, "hooks/use-resource.ts"));
+  const original = resource.useResource;
+  const { ToastProvider } = loadTypeScript(
+    resolve(root, "components/ui/toast.tsx"),
+  );
+  const { OrganizationRepositories } = loadTypeScript(
+    resolve(root, "features/organizations/organization-repositories.tsx"),
+  );
+  resource.useResource = (path) => {
+    assert.match(path, /^\/organizations\/upcode\/repositories\?/);
+    return {
+      loading: false,
+      error: "",
+      reload() {},
+      data: {
+        total: 1,
+        items: [
+          {
+            id: 42,
+            name: "project",
+            owner: "upcode",
+            description: "Our project",
+            visibility: "private",
+            clone_url:
+              "https://forge.example/git/organizations/upcode/project.git",
+            ssh_clone_url:
+              "ssh://git@forge.example:2222/organizations/upcode/project.git",
+          },
+        ],
+      },
+    };
+  };
+  try {
+    const markup = renderToStaticMarkup(
+      React.createElement(
+        ToastProvider,
+        null,
+        React.createElement(OrganizationRepositories, {
+          organization: { ...organization, role: "reader" },
+        }),
+      ),
+    );
+    assert.match(markup, /href="\/repositories\/42"/);
+    assert.match(
+      markup,
+      /https:\/\/forge.example\/git\/organizations\/upcode\/project.git/,
+    );
+    assert.match(markup, /value="ssh"/);
+    assert.doesNotMatch(markup, /New repository|Import repository/);
+    assert.match(markup, /Your organization role grants read access/);
+  } finally {
+    resource.useResource = original;
+  }
 });
 
 for (const role of [null, "reader", "maintainer", "owner"]) {
