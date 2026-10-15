@@ -4,10 +4,8 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import {
   ArrowLeft,
-  Check,
   CircleDot,
   Code2,
-  Copy,
   FileCode,
   Folder,
   GitBranch,
