@@ -14,6 +14,7 @@ The FastAPI application lives in `upcode-forge-service/app/`:
 | `schemas.py` | Validated API request payloads |
 | `security.py` | Argon2 passwords, hashed session/token secrets, authentication, throttling |
 | `api.py` | Setup, authentication, administration, repository access, and collaboration |
+| `organizations.py` | Organization profiles, discovery, private visibility, avatars, and role-based memberships |
 | `git_service.py` | Git initialization, browsing, diffs, and merges |
 | `git_http.py` | Authorized Git Smart HTTP transport |
 | `ssh_support.py`, `ssh_keys.py` | Public key validation, fingerprints, host keys, key management, and SSH clone URLs |
@@ -39,7 +40,23 @@ The SSH command parser accepts only `git-upload-pack` or `git-receive-pack` with
 | Maintain | Write plus merge, change settings, manage collaborators |
 | Owner / instance administrator | Maintain access automatically |
 
-Public visibility grants anonymous Git read access. Browser pages require authentication. Users without private repository access receive 404. Repository file storage uses database IDs, so user-supplied names are never filesystem paths.
+Public visibility grants anonymous Git read access. Repository workspace pages require authentication. Public user profiles, organization profiles, and organization search work without an account. Users without private repository access receive 404. Repository file storage uses database IDs, so user-supplied names are never filesystem paths.
+
+## Organizations
+
+Every active account can create an organization at **Organizations → New organization**. The creator becomes Owner. URL names are unique, permanent, and separate from user names; organization profiles use `/o/<slug>`. Owners and Maintainers add existing accounts by their Forge username. Membership is managed explicitly; there is no automatic public enrollment.
+
+| Organization role | Permissions |
+| --- | --- |
+| Reader | View the organization and its members; leave the organization |
+| Maintainer | Reader access plus edit the name, description, contact email, social links and picture; add/remove Readers |
+| Owner | Maintainer access plus change visibility, assign any role, remove members, and delete the organization |
+
+The last active Owner cannot leave, be removed, or be demoted. Membership mutations lock the organization row on PostgreSQL/MySQL and are also serialized within the supported single-worker deployment for SQLite. Deactivated accounts cannot be added and do not appear in the member list.
+
+Public organizations are searchable by name, URL name and description under `/explore`; results are paginated. Members see all their own organizations, including private ones, under `/organizations`. Private organization profiles, member lists, and avatar URLs return 404 to outsiders, including instance administrators without membership. All these API responses disable caching. Member profiles show organization avatar links, filtered by the viewer's access; anonymous visitors see only public organizations. Organization contact details follow the same visibility setting. Picture uploads reuse the account image limits and normalization (PNG/JPEG/WebP, 5 MiB, 16 million pixels, normalized to 256 × 256 PNG without metadata).
+
+Organizations group accounts and present a shared profile. Repository ownership and repository collaborator permissions remain separate; an organization role alone does not grant access to a member's repositories. Organization-owned repository namespaces remain on the roadmap.
 
 ## Git operations
 

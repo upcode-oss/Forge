@@ -49,9 +49,7 @@ def normalize_avatar(data):
         raise HTTPException(400, "Upload a valid PNG, JPEG or WebP image") from error
 
 
-@router.put("/profile/avatar")
-async def upload_avatar(request: Request, db=Depends(get_db), user=Depends(current_user)):
-    throttle(f"avatar:{user.id}")
+async def read_avatar(request: Request):
     content_type = request.headers.get("content-type", "").split(";", 1)[0].lower()
     if content_type not in ("image/png", "image/jpeg", "image/webp", "application/octet-stream"):
         raise HTTPException(415, "Choose a PNG, JPEG or WebP image")
@@ -60,7 +58,13 @@ async def upload_avatar(request: Request, db=Depends(get_db), user=Depends(curre
         if len(data) + len(chunk) > MAX_AVATAR_BYTES:
             raise HTTPException(413, "Profile pictures must be 5 MiB or smaller")
         data.extend(chunk)
-    normalized = await run_in_threadpool(normalize_avatar, bytes(data))
+    return await run_in_threadpool(normalize_avatar, bytes(data))
+
+
+@router.put("/profile/avatar")
+async def upload_avatar(request: Request, db=Depends(get_db), user=Depends(current_user)):
+    throttle(f"avatar:{user.id}")
+    normalized = await read_avatar(request)
     user.avatar = normalized
     user.avatar_digest = hashlib.sha256(normalized).hexdigest()
     db.commit()

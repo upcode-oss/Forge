@@ -63,7 +63,7 @@ The selected connection is encrypted in `/data/installation.json`. Preserve `FOR
 
 ## Remote access and HTTPS
 
-For remote access, set `FORGE_PUBLIC_URL=https://forge.example.com`, set `FORGE_COOKIE_SECURE=true`, and use the same origin in the setup wizard. For an existing installation, update **Organization & System → Public URL** from the currently configured origin before switching domains. Set `FORGE_BIND_ADDRESS` to the interface on which the frontend should listen. The default binds to loopback only; this permits a host reverse proxy without exposing a plain HTTP listener publicly.
+For remote access, set `FORGE_PUBLIC_URL=https://forge.example.com`, set `FORGE_COOKIE_SECURE=true`, and use the same origin in the setup wizard. For an existing installation, update **Instance & System → Public URL** from the currently configured origin before switching domains. Set `FORGE_BIND_ADDRESS` to the interface on which the frontend should listen. The default binds to loopback only; this permits a host reverse proxy without exposing a plain HTTP listener publicly.
 
 Terminate HTTPS at a reverse proxy and forward `/`, `/api/`, and `/git/` to the frontend service on port 3000. Preserve the Authorization header, support streamed request bodies, and allow suitable request sizes/timeouts for Git pushes (the backend default is 100 MiB per request and 120 seconds per Git transport operation). `FORGE_MAX_GIT_BODY_MB` changes the body limit. The backend port and database ports remain internal to Compose.
 
@@ -105,7 +105,7 @@ Existing installations receive the profile schema migration automatically on bac
 
 ## SMTP
 
-Under **Organization & System**, configure an optional SMTP host, port, TLS/STARTTLS, credentials, and sender address. Save, then send a test email to your own account. SMTP passwords are encrypted and never returned by the API. Leaving the password field blank retains a saved password; clearing the host disables SMTP. Automated notifications and password reset email workflows are not yet implemented.
+Under **Instance & System**, configure an optional SMTP host, port, TLS/STARTTLS, credentials, and sender address. Save, then send a test email to your own account. SMTP passwords are encrypted and never returned by the API. Leaving the password field blank retains a saved password; clearing the host disables SMTP. Automated notifications and password reset email workflows are not yet implemented.
 
 ## Persistence and backups
 

@@ -12,6 +12,34 @@ import { api } from "@/services/api";
 export function AvatarUploader() {
   const user = useAuth();
   const updateAuth = useUpdateAuth();
+  return (
+    <AvatarUpload
+      name={user.display_name}
+      avatarUrl={user.avatar_url}
+      endpoint="/profile/avatar"
+      hint="Visible on your public profile. PNG, JPEG or WebP, up to 5 MiB. Images are cropped to a square."
+      onSaved={(avatar_url) =>
+        updateAuth((current) =>
+          current ? { ...current, avatar_url } : current,
+        )
+      }
+    />
+  );
+}
+
+export function AvatarUpload({
+  name,
+  avatarUrl,
+  endpoint,
+  hint,
+  onSaved,
+}: {
+  name: string;
+  avatarUrl: string | null;
+  endpoint: string;
+  hint: string;
+  onSaved: (url: string | null) => void;
+}) {
   const { notify } = useToast();
   const input = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -57,14 +85,12 @@ export function AvatarUploader() {
     setBusy(true);
     setError("");
     try {
-      const result = await api<{ avatar_url: string }>("/profile/avatar", {
+      const result = await api<{ avatar_url: string }>(endpoint, {
         method: "PUT",
         headers: { "Content-Type": file.type || "application/octet-stream" },
         body: file,
       });
-      updateAuth((current) =>
-        current ? { ...current, avatar_url: result.avatar_url } : current,
-      );
+      onSaved(result.avatar_url);
       reset();
       notify("Profile picture updated");
     } catch (error) {
@@ -77,10 +103,8 @@ export function AvatarUploader() {
     setBusy(true);
     setError("");
     try {
-      await api("/profile/avatar", { method: "DELETE" });
-      updateAuth((current) =>
-        current ? { ...current, avatar_url: null } : current,
-      );
+      await api(endpoint, { method: "DELETE" });
+      onSaved(null);
       reset();
       notify("Profile picture removed");
     } catch (error) {
@@ -92,15 +116,12 @@ export function AvatarUploader() {
   return (
     <form className="avatar-editor" onSubmit={save}>
       <Avatar
-        name={user.display_name}
-        src={preview ?? user.avatar_url}
+        name={name}
+        src={preview ?? avatarUrl}
         className="profile-editor-avatar"
       />
       <div className="avatar-editor-fields">
-        <Field
-          label="Profile picture"
-          hint="Visible on your public profile. PNG, JPEG or WebP, up to 5 MiB. Images are cropped to a square."
-        >
+        <Field label="Profile picture" hint={hint}>
           <Input
             ref={input}
             type="file"
@@ -111,9 +132,9 @@ export function AvatarUploader() {
         </Field>
         <div className="avatar-editor-actions">
           <Button size="sm" loading={busy} disabled={!file}>
-            <Upload /> {user.avatar_url ? "Replace picture" : "Upload picture"}
+            <Upload /> {avatarUrl ? "Replace picture" : "Upload picture"}
           </Button>
-          {user.avatar_url && (
+          {avatarUrl && (
             <Button
               type="button"
               size="sm"

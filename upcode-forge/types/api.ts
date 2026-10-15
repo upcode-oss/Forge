@@ -9,6 +9,29 @@ export type User = {
   created_at: string;
 };
 export type SocialLink = { label: string; url: string };
+export type OrganizationRole = "owner" | "maintainer" | "reader";
+export type OrganizationSummary = {
+  id: number;
+  slug: string;
+  name: string;
+  description: string;
+  visibility: "public" | "private";
+  avatar_url: string | null;
+  role: OrganizationRole | null;
+  member_count: number;
+  created_at: string;
+};
+export type Organization = OrganizationSummary & {
+  contact_email: string | null;
+  social_links: SocialLink[];
+};
+export type OrganizationMember = {
+  username: string;
+  display_name: string;
+  avatar_url: string | null;
+  role: OrganizationRole;
+  joined_at: string;
+};
 export type ProfileFields = {
   username: string;
   display_name: string;
@@ -38,6 +61,7 @@ export type ProfileActivity = {
   incomplete: boolean;
 };
 export type PublicProfile = ProfileFields & {
+  organizations: OrganizationSummary[];
   repository_count: number;
   repositories: Repository[];
   activity: ProfileActivity;

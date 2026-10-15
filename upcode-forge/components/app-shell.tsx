@@ -1,6 +1,7 @@
 "use client";
 import {
   BarChart3,
+  Building2,
   FolderGit2,
   GitPullRequest,
   Globe,
@@ -8,6 +9,7 @@ import {
   Menu,
   Moon,
   Settings,
+  Search,
   Sun,
   UserRound,
   Users,
@@ -95,11 +97,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="nav-category">Workspace</div>
           {navigation("/dashboard", "Dashboard", BarChart3)}
           {navigation("/repositories", "Repositories", FolderGit2)}
+          {navigation("/organizations", "Organizations", Building2)}
+          {navigation("/explore", "Explore organizations", Search)}
           {user.is_admin && (
             <>
               <div className="nav-category">Administration</div>
               {navigation("/users", "Users", Users)}
-              {navigation("/settings", "Organization & System", Settings)}
+              {navigation("/settings", "Instance & System", Settings)}
             </>
           )}
           <div className="nav-category">Account</div>

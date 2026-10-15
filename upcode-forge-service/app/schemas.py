@@ -183,6 +183,42 @@ class MemberInput(BaseModel):
     role: Literal["read", "write", "maintain"] = "read"
 
 
+class OrganizationUpdate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    description: str = Field(default="", max_length=500)
+    visibility: Literal["public", "private"] = "private"
+    contact_email: EmailStr | None = None
+    social_links: list[SocialLink] = Field(default_factory=list, max_length=10)
+
+    @field_validator("name")
+    @classmethod
+    def name_valid(cls, value):
+        if not value.strip():
+            raise ValueError("Name cannot be blank")
+        return value.strip()
+
+    @field_validator("contact_email", mode="before")
+    @classmethod
+    def empty_email(cls, value):
+        return None if isinstance(value, str) and not value.strip() else value
+
+
+class OrganizationCreate(OrganizationUpdate):
+    slug: str = Field(pattern=r"^[a-z][a-z0-9_-]{0,49}$")
+
+    @field_validator("slug")
+    @classmethod
+    def available_slug(cls, value):
+        if value == "new":
+            raise ValueError("This URL name is reserved; choose another name")
+        return value
+
+
+class OrganizationMemberInput(BaseModel):
+    username: str = Field(min_length=1, max_length=50)
+    role: Literal["owner", "maintainer", "reader"] = "reader"
+
+
 class TicketCreate(BaseModel):
     kind: Literal["issue", "pull"] = "issue"
     title: str = Field(min_length=1, max_length=200)

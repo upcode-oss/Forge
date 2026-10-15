@@ -127,6 +127,15 @@ for (const registrationYear of [2012, 2026]) {
         website: "",
         public_email: null,
         social_links: [],
+        organizations: [
+          {
+            id: 1,
+            slug: "upcode",
+            name: "Upcode",
+            visibility: "public",
+            avatar_url: "/api/v1/organizations/upcode/avatar/hash.png",
+          },
+        ],
         created_at: `${registrationYear}-01-01T00:00:00Z`,
         repository_count: 0,
         repositories: [],
@@ -160,6 +169,12 @@ for (const registrationYear of [2012, 2026]) {
         ),
       );
       assert.ok(markup.includes(`src="${avatar}"`));
+      assert.match(markup, /href="\/o\/upcode"/);
+      assert.match(markup, /aria-label="Upcode"/);
+      assert.match(
+        markup,
+        /src="\/api\/v1\/organizations\/upcode\/avatar\/hash.png"/,
+      );
       assert.match(markup, /3 private contributions/);
       assert.match(markup, /5 contributions on 2026-01-01 \(3 private\)/);
       assert.match(markup, /Public and private contributions/);
@@ -232,6 +247,244 @@ test("the profile editor renders image upload and removal beside profile fields"
     auth.useAuth = originalAuth;
     auth.useUpdateAuth = originalUpdate;
     resource.useResource = originalResource;
+  }
+});
+
+const organization = {
+  id: 1,
+  slug: "upcode",
+  name: "Upcode",
+  description: "Build together",
+  visibility: "private",
+  avatar_url: "/api/v1/organizations/upcode/avatar/hash.png",
+  role: "owner",
+  member_count: 3,
+  created_at: "2026-01-01T00:00:00Z",
+  contact_email: "team@example.com",
+  social_links: [{ label: "GitHub", url: "https://github.com/upcode" }],
+};
+
+test("workspace organization pages render separate profile and upload forms for editors", () => {
+  const resource = loadTypeScript(resolve(root, "hooks/use-resource.ts"));
+  const auth = loadTypeScript(resolve(root, "features/auth/auth-context.tsx"));
+  const originalResource = resource.useResource;
+  const originalAuth = auth.useAuth;
+  const { ToastProvider } = loadTypeScript(
+    resolve(root, "components/ui/toast.tsx"),
+  );
+  const { OrganizationWorkspace } = loadTypeScript(
+    resolve(root, "features/organizations/organization-pages.tsx"),
+  );
+  const { AppRouterContext } = createRequire(import.meta.url)(
+    "next/dist/shared/lib/app-router-context.shared-runtime",
+  );
+  auth.useAuth = () => ({ username: "admin" });
+  try {
+    for (const role of ["owner", "maintainer", "reader"]) {
+      resource.useResource = (path) => ({
+        loading: false,
+        error: "",
+        reload() {},
+        data: path.endsWith("/members")
+          ? [
+              {
+                username: "admin",
+                display_name: "Admin",
+                role,
+                avatar_url: null,
+              },
+            ]
+          : { ...organization, role },
+      });
+      const markup = renderToStaticMarkup(
+        React.createElement(
+          AppRouterContext.Provider,
+          { value: { push() {} } },
+          React.createElement(
+            ToastProvider,
+            null,
+            React.createElement(OrganizationWorkspace, { slug: "upcode" }),
+          ),
+        ),
+      );
+      assert.equal(markup.includes('type="file"'), role !== "reader");
+      assert.equal(markup.includes("Save organization"), role !== "reader");
+      assert.equal(markup.includes("Delete organization"), role === "owner");
+      assert.match(markup, /href="\/o\/upcode"/);
+      let depth = 0;
+      for (const tag of markup.matchAll(/<\/?form\b/g)) {
+        depth += tag[0].startsWith("</") ? -1 : 1;
+        assert.ok(depth >= 0 && depth <= 1, "forms must not be nested");
+      }
+      assert.equal(depth, 0);
+    }
+  } finally {
+    resource.useResource = originalResource;
+    auth.useAuth = originalAuth;
+  }
+});
+
+test("organization discovery uses the public search endpoint and links to profiles", () => {
+  const resource = loadTypeScript(resolve(root, "hooks/use-resource.ts"));
+  const original = resource.useResource;
+  const { OrganizationList } = loadTypeScript(
+    resolve(root, "features/organizations/organization-list.tsx"),
+  );
+  resource.useResource = (path) => {
+    assert.match(path, /scope=public&q=Forge%20Team/);
+    return {
+      loading: false,
+      error: "",
+      reload() {},
+      data: {
+        items: [{ ...organization, visibility: "public", role: null }],
+        total: 1,
+      },
+    };
+  };
+  try {
+    const markup = renderToStaticMarkup(
+      React.createElement(OrganizationList, { initialQuery: "Forge Team" }),
+    );
+    assert.match(markup, /role="search"/);
+    assert.match(markup, /href="\/o\/upcode"/);
+    assert.match(markup, /Build together/);
+  } finally {
+    resource.useResource = original;
+  }
+});
+
+test("organization forms restrict visibility changes to Owners and keep avatar uploads separate", () => {
+  const { OrganizationForm } = loadTypeScript(
+    resolve(root, "features/organizations/organization-form.tsx"),
+  );
+  for (const role of ["owner", "maintainer"]) {
+    const markup = renderToStaticMarkup(
+      React.createElement(OrganizationForm, {
+        organization: { ...organization, role },
+        onSaved() {},
+      }),
+    );
+    const select = markup.match(/<select[^>]*name="visibility"[^>]*>/)?.[0];
+    assert.ok(select);
+    assert.equal(select.includes('disabled=""'), role === "maintainer");
+    assert.match(markup, /team@example.com/);
+    assert.match(markup, /https:\/\/github.com\/upcode/);
+    assert.doesNotMatch(markup, /type="file"/);
+    assert.equal((markup.match(/<form\b/g) ?? []).length, 1);
+  }
+  const create = renderToStaticMarkup(
+    React.createElement(OrganizationForm, { onSaved() {} }),
+  );
+  assert.match(create, /name="slug"/);
+  assert.match(create, /value="private" selected=""/);
+  assert.match(create, /Create organization/);
+});
+
+for (const role of [null, "reader", "maintainer", "owner"]) {
+  test(`organization members expose controls appropriate to ${role ?? "public visitor"}`, () => {
+    const resource = loadTypeScript(resolve(root, "hooks/use-resource.ts"));
+    const original = resource.useResource;
+    const { OrganizationMembers } = loadTypeScript(
+      resolve(root, "features/organizations/organization-members.tsx"),
+    );
+    resource.useResource = () => ({
+      loading: false,
+      error: "",
+      reload() {},
+      data: [
+        {
+          username: "admin",
+          display_name: "Admin",
+          role: "owner",
+          avatar_url: null,
+        },
+        {
+          username: "alice",
+          display_name: "Alice",
+          role: "maintainer",
+          avatar_url: null,
+        },
+        {
+          username: "bob",
+          display_name: "Bob",
+          role: "reader",
+          avatar_url: null,
+        },
+      ],
+    });
+    try {
+      const markup = renderToStaticMarkup(
+        React.createElement(OrganizationMembers, {
+          slug: "upcode",
+          role,
+          username: role ? "bob" : undefined,
+        }),
+      );
+      assert.match(markup, /href="\/u\/alice"/);
+      assert.equal(
+        markup.includes("Add member"),
+        role === "owner" || role === "maintainer",
+      );
+      assert.equal(
+        markup.includes('aria-label="Role for admin"'),
+        role === "owner",
+      );
+      assert.equal(
+        markup.includes('aria-label="Role for alice"'),
+        role === "owner",
+      );
+      assert.equal(
+        markup.includes('aria-label="Role for bob"'),
+        role === "owner" || role === "maintainer",
+      );
+      assert.equal(markup.includes('aria-label="Leave organization"'), !!role);
+      if (role === "maintainer")
+        assert.doesNotMatch(markup, /<option[^>]*value="(?:owner|maintainer)"/);
+      if (!role)
+        assert.doesNotMatch(markup, /<form\b|Remove admin|Leave organization/);
+    } finally {
+      resource.useResource = original;
+    }
+  });
+}
+
+test("public organization profiles render contact details, pictures and member links", () => {
+  const resource = loadTypeScript(resolve(root, "hooks/use-resource.ts"));
+  const original = resource.useResource;
+  const { PublicOrganization } = loadTypeScript(
+    resolve(root, "features/organizations/organization-pages.tsx"),
+  );
+  resource.useResource = (path) => ({
+    loading: false,
+    error: "",
+    reload() {},
+    data: path.endsWith("/members")
+      ? [
+          {
+            username: "admin",
+            display_name: "Admin",
+            role: "owner",
+            avatar_url: null,
+          },
+        ]
+      : { ...organization, visibility: "public", role: null },
+  });
+  try {
+    const markup = renderToStaticMarkup(
+      React.createElement(PublicOrganization, { slug: "upcode" }),
+    );
+    assert.match(markup, /mailto:team@example.com/);
+    assert.match(markup, /href="https:\/\/github.com\/upcode"/);
+    assert.match(
+      markup,
+      /src="\/api\/v1\/organizations\/upcode\/avatar\/hash.png"/,
+    );
+    assert.match(markup, /href="\/u\/admin"/);
+    assert.match(markup, /href="\/explore"/);
+    assert.doesNotMatch(markup, /Add member|Save organization|Your membership/);
+  } finally {
+    resource.useResource = original;
   }
 });
 

@@ -10,6 +10,8 @@ See [TODO.md](TODO.md) for the remaining roadmap and [installation documentation
 
 ## Added locally
 
+- Organizations with private/public visibility, pictures, contact email, social links, and Owner/Maintainer/Reader roles. Public search lives at `/explore`, organization profiles at `/o/<slug>`, and management under **Organizations**. Private organizations, membership badges, and pictures are visible only to members. The last active Owner cannot be removed or demoted. Migration `0005` creates organization tables automatically on startup.
+
 - Git SSH access on port 2222, account public key management with fingerprints, last-used timestamps and read-only/read/write scopes, plus HTTPS/SSH clone selection. Persistent Ed25519 host keys and migration `0004` support existing installations. The listener permits only Git operations and applies existing repository permissions on every command.
 
 - Corrected the dashboard PNG logo's aspect ratio and reduced the public profile header logo size.

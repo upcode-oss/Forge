@@ -58,6 +58,9 @@ export function PublicProfile({ username }: { username: string }) {
             priority
           />
         </Link>
+        <Button asChild variant="ghost">
+          <Link href="/explore">Explore organizations</Link>
+        </Button>
         <Button asChild variant="outline">
           <Link href="/dashboard">
             Open workspace <ExternalLink />
@@ -139,6 +142,29 @@ export function PublicProfile({ username }: { username: string }) {
                         </a>
                       ))}
                     </div>
+                  )}
+                  {!!profile.organizations?.length && (
+                    <section
+                      className="profile-organizations"
+                      aria-label="Organizations"
+                    >
+                      <h2>Organizations</h2>
+                      <div className="organization-badges">
+                        {profile.organizations.map((organization) => (
+                          <Link
+                            key={organization.id}
+                            href={`/o/${organization.slug}`}
+                            title={`${organization.name}${organization.visibility === "private" ? " (private)" : ""}`}
+                            aria-label={organization.name}
+                          >
+                            <Avatar
+                              name={organization.name}
+                              src={organization.avatar_url}
+                            />
+                          </Link>
+                        ))}
+                      </div>
+                    </section>
                   )}
                   <Button
                     variant="outline"

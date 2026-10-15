@@ -9,8 +9,9 @@ from app.api import attribute, repo_data
 from app.avatars import avatar_url
 from app.database import get_db
 from app.models import Comment, Membership, Repository, Ticket, User
+from app.organizations import profile_organizations
 from app.schemas import ProfileUpdate
-from app.security import current_user
+from app.security import current_user, optional_user
 
 router = APIRouter(prefix="/api/v1")
 
@@ -166,6 +167,7 @@ def public_profile(
     username: str,
     year: int | None = Query(default=None, ge=1970, le=9999),
     db=Depends(get_db),
+    viewer=Depends(optional_user),
 ):
     user = db.scalar(
         select(User).where(User.username == username.lower(), User.is_active.is_(True))
@@ -183,6 +185,7 @@ def public_profile(
     )
     return {
         **profile_data(user),
+        "organizations": profile_organizations(db, user, viewer),
         "repository_count": db.scalar(select(func.count()).select_from(Repository).where(*owned)),
         "repositories": [repo_data(db, item, None) for item in repositories],
         "activity": {

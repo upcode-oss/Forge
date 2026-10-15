@@ -60,13 +60,13 @@ export default function Settings() {
   return (
     <>
       <PageHeader
-        title="Organization & System"
+        title="Instance & System"
         description="Configure your instance, Git defaults, and outgoing email."
       />
       <div className="content-grid">
         <Card>
           <CardHeader
-            title="Organization"
+            title="Instance"
             description="The public URL is used for clone links and browser request validation."
           />
           {instance.loading ? (
