@@ -71,8 +71,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Image
               src="/logo.png"
               alt="Upcode Forge"
-              width={210}
-              height={66}
+              width={714}
+              height={631}
+              className="sidebar-logo"
+              sizes="91px"
               priority
             />
           </Link>

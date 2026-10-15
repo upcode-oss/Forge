@@ -51,8 +51,10 @@ export function PublicProfile({ username }: { username: string }) {
           <Image
             src="/logo.png"
             alt="Upcode Forge"
-            width={175}
-            height={55}
+            width={714}
+            height={631}
+            className="public-profile-logo"
+            sizes="46px"
             priority
           />
         </Link>
