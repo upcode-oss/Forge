@@ -83,7 +83,7 @@ test("native loading buttons still disable submission and render their label", (
   assert.match(markup, /Save<\/button>$/);
 });
 
-test("the public profile route renders its workspace link and loading state", () => {
+test("the public profile route renders public navigation and its loading state", () => {
   const { ToastProvider } = loadTypeScript(
     resolve(root, "components/ui/toast.tsx"),
   );
@@ -97,8 +97,9 @@ test("the public profile route renders its workspace link and loading state", ()
       React.createElement(PublicProfile, { username: "hackandcode" }),
     ),
   );
-  assert.match(markup, /href="\/dashboard"/);
-  assert.match(markup, /Open workspace/);
+  assert.match(markup, /href="\/login"/);
+  assert.match(markup, /href="\/explore\/repositories"/);
+  assert.match(markup, /Sign in/);
   assert.match(markup, /role="status"/);
   assert.match(markup, /Loading/);
 });
@@ -540,6 +541,171 @@ test("repository deletion is offered only to users with Maintain access", () => 
         assert.match(markup, /button-destructive/);
       }
     }
+  }
+});
+
+test("public registration, login and navigation follow the instance registration setting", () => {
+  const resource = loadTypeScript(resolve(root, "hooks/use-resource.ts"));
+  const original = resource.useResource;
+  const { PublicHeader } = loadTypeScript(
+    resolve(root, "components/public-header.tsx"),
+  );
+  const { default: Register } = loadTypeScript(
+    resolve(root, "app/register/page.tsx"),
+  );
+  const { default: Login } = loadTypeScript(
+    resolve(root, "app/login/page.tsx"),
+  );
+  const { AppRouterContext } = createRequire(import.meta.url)(
+    "next/dist/shared/lib/app-router-context.shared-runtime",
+  );
+  try {
+    for (const registration_enabled of [false, true]) {
+      resource.useResource = (path) => ({
+        loading: false,
+        error: "",
+        reload() {},
+        data:
+          path === "/instance"
+            ? { name: "Test Forge", registration_enabled }
+            : null,
+      });
+      const header = renderToStaticMarkup(React.createElement(PublicHeader));
+      assert.match(header, /href="\/explore\/repositories"/);
+      assert.match(header, /href="\/explore"/);
+      assert.match(header, /href="\/login"/);
+      assert.equal(header.includes('href="/register"'), registration_enabled);
+      for (const Component of [Register, Login]) {
+        const markup = renderToStaticMarkup(
+          React.createElement(
+            AppRouterContext.Provider,
+            { value: { replace() {} } },
+            React.createElement(Component),
+          ),
+        );
+        if (Component === Register) {
+          assert.equal(
+            markup.includes('name="confirm_password"'),
+            registration_enabled,
+          );
+          assert.equal(markup.includes('name="email"'), registration_enabled);
+          assert.equal(
+            markup.includes("Registration is closed"),
+            !registration_enabled,
+          );
+          assert.doesNotMatch(markup, /name="is_admin"/);
+        } else {
+          assert.equal(
+            markup.includes('href="/register"'),
+            registration_enabled,
+          );
+        }
+      }
+    }
+  } finally {
+    resource.useResource = original;
+  }
+});
+
+test("public repository discovery offers browsing without management actions", () => {
+  const resource = loadTypeScript(resolve(root, "hooks/use-resource.ts"));
+  const original = resource.useResource;
+  const { RepositoryList } = loadTypeScript(
+    resolve(root, "features/repositories/repository-list.tsx"),
+  );
+  resource.useResource = (path) => {
+    assert.equal(path, "/repositories?scope=public");
+    return {
+      loading: false,
+      error: "",
+      data: [
+        {
+          id: 42,
+          name: "project",
+          owner: "upcode",
+          owner_type: "organization",
+          description: "Public project",
+          visibility: "public",
+          created_at: "2026-01-01T00:00:00Z",
+        },
+      ],
+    };
+  };
+  try {
+    const markup = renderToStaticMarkup(
+      React.createElement(RepositoryList, { publicOnly: true }),
+    );
+    assert.match(markup, /Explore repositories/);
+    assert.match(markup, /href="\/repositories\/42"/);
+    assert.doesNotMatch(
+      markup,
+      /New repository|Import repository|Filter visibility/,
+    );
+  } finally {
+    resource.useResource = original;
+  }
+});
+
+test("public repository pages render code and clone controls without write actions", () => {
+  const resource = loadTypeScript(resolve(root, "hooks/use-resource.ts"));
+  const original = resource.useResource;
+  const { ToastProvider } = loadTypeScript(
+    resolve(root, "components/ui/toast.tsx"),
+  );
+  const { RepositoryWorkspace } = loadTypeScript(
+    resolve(root, "features/repositories/repository-workspace.tsx"),
+  );
+  try {
+    for (const empty of [false, true]) {
+      resource.useResource = (path) => ({
+        loading: false,
+        error: "",
+        reload() {},
+        data:
+          path === "/repositories/42"
+            ? {
+                id: 42,
+                name: "project",
+                owner: "upcode",
+                owner_type: "organization",
+                owner_profile_url: "/o/upcode",
+                description: "Public project",
+                visibility: "public",
+                role: "read",
+                default_branch: "main",
+                clone_url:
+                  "https://forge.example/git/organizations/upcode/project.git",
+                ssh_clone_url: null,
+              }
+            : path?.endsWith("/branches")
+              ? empty
+                ? []
+                : ["main"]
+              : path?.includes("/tree?")
+                ? []
+                : null,
+      });
+      const markup = renderToStaticMarkup(
+        React.createElement(
+          ToastProvider,
+          null,
+          React.createElement(RepositoryWorkspace, {
+            id: "42",
+            publicView: true,
+          }),
+        ),
+      );
+      assert.match(markup, /href="\/explore\/repositories"/);
+      assert.match(markup, /href="\/o\/upcode"/);
+      assert.match(markup, /Clone protocol/);
+      assert.doesNotMatch(
+        markup,
+        /Delete repository|New issue|Merge pull request|git push|>Settings</,
+      );
+      if (empty) assert.match(markup, /No code has been pushed yet/);
+    }
+  } finally {
+    resource.useResource = original;
   }
 });
 

@@ -1,4 +1,9 @@
 import { redirect } from "next/navigation";
-export default function Home() {
-  redirect("/dashboard");
+import { cookies } from "next/headers";
+export default async function Home() {
+  redirect(
+    (await cookies()).has("forge_session")
+      ? "/dashboard"
+      : "/explore/repositories",
+  );
 }

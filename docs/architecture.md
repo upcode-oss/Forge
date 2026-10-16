@@ -13,7 +13,7 @@ The FastAPI application lives in `upcode-forge-service/app/`:
 | `models.py` | Instance, users, sessions/tokens, repositories, memberships, tickets, comments |
 | `schemas.py` | Validated API request payloads |
 | `security.py` | Argon2 passwords, hashed session/token secrets, authentication, throttling |
-| `api.py` | Setup, authentication, administration, repository access, and collaboration |
+| `api.py` | Setup, authentication, optional registration, administration, repository access, and collaboration |
 | `organizations.py` | Organization profiles, discovery, private visibility, avatars, and role-based memberships |
 | `organization_access.py`, `repository_access.py` | Shared organization and repository access checks, inherited roles, and Git namespace resolution |
 | `git_service.py` | Git initialization, browsing, diffs, and merges |
@@ -41,7 +41,9 @@ The SSH command parser accepts only `git-upload-pack` or `git-receive-pack` with
 | Maintain | Write plus merge, change settings, manage collaborators, delete repositories |
 | Owner / instance administrator | Maintain access automatically |
 
-Public visibility grants anonymous Git read access. Repository workspace pages require authentication. Public user profiles, organization profiles, and organization search work without an account. Users without private repository access receive 404. Repository file storage uses database IDs, so user-supplied names are never filesystem paths.
+Public visibility grants anonymous Git and browser read access. Repository pages at `/repositories/<id>` use the workspace shell for signed-in users and public navigation for visitors. Repository files, README, branches, commits/diffs, issues, pull requests/diffs, and comments use optional authentication while mutations and collaborator listings still require authentication and repository permissions. `/repositories?scope=public` lists only effectively public repositories even for signed-in administrators. Discovery at `/explore/repositories`, public user profiles, public organization profiles, and organization search work without an account. Users without private repository access receive 404. Repository file storage uses database IDs, so user-supplied names are never filesystem paths.
+
+Instance metadata, including the registration state, is public; SMTP and administrator account management remain protected. Only instance administrators can update the persisted `registration_enabled` setting. Migration `0007` defaults it to false on existing installations. `/auth/register` checks the setting on every request, validates the same username, email, and password rules as administrator-created accounts, rate limits attempts, always creates a regular active account, and starts a session with the existing HttpOnly cookie settings. Disabling registration does not revoke existing accounts or sessions.
 
 Repository settings include permanent deletion with a full owner/repository name confirmation. The DELETE API requires Maintain access and removes comments, issues/pull requests, collaborator grants, and the repository in one SQL transaction. Git storage is first renamed to a unique retired directory and restored if the transaction fails, then removed after commit. Filesystem cleanup failures after commit are logged for administrator cleanup; retired directories are never served or reused for new repositories.
 

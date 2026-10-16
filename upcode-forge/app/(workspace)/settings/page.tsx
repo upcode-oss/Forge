@@ -32,7 +32,10 @@ export default function Settings() {
                 port: Number(values.port),
                 from_address: values.from_address || null,
               }
-            : values,
+            : {
+                ...values,
+                registration_enabled: values.registration_enabled === "on",
+              },
         ),
       });
       if (path.endsWith("smtp")) smtp.reload();
@@ -104,6 +107,20 @@ export default function Settings() {
                     defaultValue={instance.data.default_branch}
                   />
                 </Field>
+                <label className="checkbox-field">
+                  <input
+                    type="checkbox"
+                    name="registration_enabled"
+                    defaultChecked={instance.data.registration_enabled}
+                    disabled={busy}
+                  />
+                  Allow public registration
+                </label>
+                <p className="muted small">
+                  Visitors can create their own accounts when enabled. New
+                  accounts have no administrator privileges. Disabling
+                  registration keeps existing accounts active.
+                </p>
                 <div className="form-actions">
                   <Button loading={busy}>
                     <Save />

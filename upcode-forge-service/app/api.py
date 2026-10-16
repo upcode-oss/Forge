@@ -4,7 +4,7 @@ import shutil
 from contextlib import nullcontext
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy import URL, delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -25,7 +25,7 @@ from app.models import (
     Ticket,
     User,
 )
-from app.repository_access import access, role, visible
+from app.repository_access import access, public_repositories, role, visible
 from app.schemas import (
     SMTP,
     CommentInput,
@@ -33,6 +33,7 @@ from app.schemas import (
     InstanceUpdate,
     MemberInput,
     PasswordInput,
+    Registration,
     RepoCreate,
     RepoImport,
     RepoUpdate,
@@ -48,6 +49,7 @@ from app.security import (
     dummy_hash,
     hasher,
     issue_token,
+    optional_user,
     throttle,
     verify,
 )
@@ -151,6 +153,7 @@ def setup(payload: Setup, request: Request):
                     name=payload.name,
                     public_url=payload.public_url,
                     default_branch=payload.default_branch,
+                    registration_enabled=payload.registration_enabled,
                 )
                 if payload.smtp and payload.smtp.host:
                     instance.smtp_config = (
@@ -188,6 +191,10 @@ def login(payload: Credentials, request: Request, response: Response, db=Depends
     valid = verify(payload.password, user.password_hash if user else dummy_hash)
     if not user or not valid or not user.is_active:
         raise HTTPException(401, "Invalid username or password")
+    return start_session(db, user, response)
+
+
+def start_session(db, user, response):
     raw = issue_token(db, user, "Browser session")
     response.set_cookie(
         "forge_session",
@@ -199,6 +206,24 @@ def login(payload: Credentials, request: Request, response: Response, db=Depends
         path="/",
     )
     return user_data(user)
+
+
+@router.post("/auth/register", status_code=201)
+def register(payload: Registration, request: Request, response: Response, db=Depends(get_db)):
+    throttle(f"register:{request.client.host}")
+    if not db.get(Instance, 1).registration_enabled:
+        raise HTTPException(403, "Registration is disabled by the instance administrator")
+    user = User(
+        username=payload.username,
+        email=str(payload.email).lower(),
+        display_name=payload.display_name,
+        password_hash=hasher.hash(payload.password),
+        is_admin=False,
+        is_active=True,
+    )
+    db.add(user)
+    commit(db)
+    return start_session(db, user, response)
 
 
 @router.post("/auth/logout")
@@ -233,12 +258,13 @@ def password(
 
 
 @router.get("/instance")
-def instance(db=Depends(get_db), user=Depends(current_user)):
+def instance(db=Depends(get_db)):
     item = db.get(Instance, 1)
     return {
         "name": item.name,
         "public_url": item.public_url,
         "default_branch": item.default_branch,
+        "registration_enabled": item.registration_enabled,
         "version": "0.1.0",
     }
 
@@ -247,7 +273,7 @@ def instance(db=Depends(get_db), user=Depends(current_user)):
 def update_instance(payload: InstanceUpdate, db=Depends(get_db), user=Depends(admin_user)):
     git.valid_branch(payload.default_branch)
     item = db.get(Instance, 1)
-    for key, value in payload.model_dump().items():
+    for key, value in payload.model_dump(exclude_unset=True).items():
         setattr(item, key, value)
     db.commit()
     return {"ok": True}
@@ -372,12 +398,16 @@ def revoke(token_id: int, db=Depends(get_db), user=Depends(current_user)):
 
 
 @router.get("/repositories")
-def repositories(db=Depends(get_db), user=Depends(current_user)):
+def repositories(
+    scope: str = Query(default="accessible", pattern="^(accessible|public)$"),
+    db=Depends(get_db),
+    user=Depends(optional_user),
+):
     return [
         repo_data(db, item, user)
         for item in db.scalars(
             select(Repository)
-            .where(visible(user))
+            .where(public_repositories() if scope == "public" else visible(user))
             .order_by(Repository.created_at.desc())
             .limit(500)
         )
@@ -475,7 +505,7 @@ def import_repository(payload: RepoImport, db=Depends(get_db), user=Depends(curr
 
 
 @router.get("/repositories/{repo_id}")
-def repository(repo_id: int, db=Depends(get_db), user=Depends(current_user)):
+def repository(repo_id: int, db=Depends(get_db), user=Depends(optional_user)):
     return repo_data(db, access(db, repo_id, user), user)
 
 
@@ -512,23 +542,23 @@ def update_repository(
 
 
 @router.get("/repositories/{repo_id}/branches")
-def list_branches(repo_id: int, db=Depends(get_db), user=Depends(current_user)):
+def list_branches(repo_id: int, db=Depends(get_db), user=Depends(optional_user)):
     return git.branches(access(db, repo_id, user))
 
 
 @router.get("/repositories/{repo_id}/tree")
-def tree(repo_id: int, ref: str, path: str = "", db=Depends(get_db), user=Depends(current_user)):
+def tree(repo_id: int, ref: str, path: str = "", db=Depends(get_db), user=Depends(optional_user)):
     return git.tree(access(db, repo_id, user), ref, path)
 
 
 @router.get("/repositories/{repo_id}/blob")
-def blob(repo_id: int, ref: str, path: str, db=Depends(get_db), user=Depends(current_user)):
+def blob(repo_id: int, ref: str, path: str, db=Depends(get_db), user=Depends(optional_user)):
     return git.blob(access(db, repo_id, user), ref, path)
 
 
 @router.get("/repositories/{repo_id}/commits")
 def commits(
-    repo_id: int, ref: str, offset: int = 0, db=Depends(get_db), user=Depends(current_user)
+    repo_id: int, ref: str, offset: int = 0, db=Depends(get_db), user=Depends(optional_user)
 ):
     if offset < 0 or offset > 100000:
         raise HTTPException(422, "Invalid offset")
@@ -536,7 +566,7 @@ def commits(
 
 
 @router.get("/repositories/{repo_id}/commits/{sha}")
-def commit_diff(repo_id: int, sha: str, db=Depends(get_db), user=Depends(current_user)):
+def commit_diff(repo_id: int, sha: str, db=Depends(get_db), user=Depends(optional_user)):
     item = access(db, repo_id, user)
     oid = git.resolve(git.path_for(item), sha)
     return {
@@ -620,7 +650,7 @@ def get_ticket(db, repo_id, ticket_id, user, level="read"):
 
 
 @router.get("/repositories/{repo_id}/tickets")
-def tickets(repo_id: int, kind: str = "issue", db=Depends(get_db), user=Depends(current_user)):
+def tickets(repo_id: int, kind: str = "issue", db=Depends(get_db), user=Depends(optional_user)):
     access(db, repo_id, user)
     return [
         ticket_data(db, item)
@@ -653,7 +683,7 @@ def create_ticket(
 
 
 @router.get("/repositories/{repo_id}/tickets/{ticket_id}")
-def ticket(repo_id: int, ticket_id: int, db=Depends(get_db), user=Depends(current_user)):
+def ticket(repo_id: int, ticket_id: int, db=Depends(get_db), user=Depends(optional_user)):
     item = get_ticket(db, repo_id, ticket_id, user)
     comments = [
         {
@@ -696,7 +726,7 @@ def ticket_state(
 
 
 @router.get("/repositories/{repo_id}/tickets/{ticket_id}/diff")
-def pull_diff(repo_id: int, ticket_id: int, db=Depends(get_db), user=Depends(current_user)):
+def pull_diff(repo_id: int, ticket_id: int, db=Depends(get_db), user=Depends(optional_user)):
     item = get_ticket(db, repo_id, ticket_id, user)
     if item.kind != "pull":
         raise HTTPException(400, "This is not a pull request")

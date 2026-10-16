@@ -1945,6 +1945,7 @@ tfoot td {
   border-bottom: 1px solid var(--border);
   background: var(--card);
   gap: 1rem;
+  flex-wrap: wrap;
 }
 .public-profile-nav .public-profile-logo {
   display: block;

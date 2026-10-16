@@ -1,14 +1,18 @@
 "use client";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/form";
 import { api, json } from "@/services/api";
+import { useResource } from "@/hooks/use-resource";
+import type { Instance } from "@/types/api";
 
 export default function Login() {
   const router = useRouter();
+  const instance = useResource<Instance>("/instance");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -69,8 +73,20 @@ export default function Login() {
           <Button loading={busy}>Sign in</Button>
         </form>
         <p className="muted small auth-footnote">
-          Accounts are managed by your Forge administrator.
+          {instance.data?.registration_enabled ? (
+            <>
+              New to Forge?{" "}
+              <Link className="text-link" href="/register">
+                Create an account
+              </Link>
+            </>
+          ) : (
+            "Accounts are managed by your Forge administrator."
+          )}
         </p>
+        <Link href="/explore/repositories" className="text-link small">
+          Explore public repositories
+        </Link>
       </Card>
     </main>
   );

@@ -807,7 +807,13 @@ function RepositorySettings({
   );
 }
 
-export function RepositoryWorkspace({ id }: { id: string }) {
+export function RepositoryWorkspace({
+  id,
+  publicView = false,
+}: {
+  id: string;
+  publicView?: boolean;
+}) {
   const resource = useResource<Repository>(`/repositories/${id}`);
   const branchResource = useResource<string[]>(`/repositories/${id}/branches`);
   const [tab, setTab] = useState("code");
@@ -827,7 +833,7 @@ export function RepositoryWorkspace({ id }: { id: string }) {
       <nav className="repository-breadcrumbs" aria-label="Breadcrumb">
         <ol>
           <li>
-            <Link href="/repositories">
+            <Link href={publicView ? "/explore/repositories" : "/repositories"}>
               <FolderGit2 aria-hidden="true" />
               All repositories
             </Link>
@@ -924,17 +930,25 @@ export function RepositoryWorkspace({ id }: { id: string }) {
         <Card>
           <Empty
             title="Your repository is empty"
-            description="Push your first commit to get started."
+            description={
+              repo.role === "read"
+                ? "No code has been pushed yet."
+                : "Push your first commit to get started."
+            }
           />
-          <pre className="code-view">{`git clone ${cloneUrl}\ncd ${repo.name}\ngit switch --orphan ${repo.default_branch}\necho "# ${repo.name}" > README.md\ngit add README.md\ngit commit -m "Initial commit"\ngit push -u origin ${repo.default_branch}`}</pre>
-          <p className="muted small">
-            {cloneProtocol === "ssh" && repo.ssh_clone_url
-              ? "Add your public SSH key under Profile & Access Tokens before connecting."
-              : "Use your username and an access token from Profile & Access Tokens when Git asks for credentials."}
-          </p>
-          <Button variant="outline" onClick={branchResource.reload}>
-            Refresh branches
-          </Button>
+          {repo.role !== "read" && (
+            <>
+              <pre className="code-view">{`git clone ${cloneUrl}\ncd ${repo.name}\ngit switch --orphan ${repo.default_branch}\necho "# ${repo.name}" > README.md\ngit add README.md\ngit commit -m "Initial commit"\ngit push -u origin ${repo.default_branch}`}</pre>
+              <p className="muted small">
+                {cloneProtocol === "ssh" && repo.ssh_clone_url
+                  ? "Add your public SSH key under Profile & Access Tokens before connecting."
+                  : "Use your username and an access token from Profile & Access Tokens when Git asks for credentials."}
+              </p>
+              <Button variant="outline" onClick={branchResource.reload}>
+                Refresh branches
+              </Button>
+            </>
+          )}
         </Card>
       ) : tab === "commits" ? (
         <CommitHistory repo={repo} branches={branches} />

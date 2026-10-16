@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import {
@@ -17,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/avatar";
+import { PublicHeader } from "@/components/public-header";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Select } from "@/components/ui/form";
 import { Empty, ErrorState, Loading } from "@/components/states";
@@ -46,27 +46,7 @@ export function PublicProfile({ username }: { username: string }) {
   }
   return (
     <div className="public-profile-page">
-      <header className="public-profile-nav">
-        <Link href="/" aria-label="Upcode Forge home">
-          <Image
-            src="/logo.png"
-            alt="Upcode Forge"
-            width={714}
-            height={631}
-            className="public-profile-logo"
-            sizes="46px"
-            priority
-          />
-        </Link>
-        <Button asChild variant="ghost">
-          <Link href="/explore">Explore organizations</Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href="/dashboard">
-            Open workspace <ExternalLink />
-          </Link>
-        </Button>
-      </header>
+      <PublicHeader />
       <main className="public-profile-main">
         {resource.loading ? (
           <Loading />

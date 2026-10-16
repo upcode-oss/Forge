@@ -1,9 +1,10 @@
-import { RepositoryWorkspace } from "@/features/repositories/repository-workspace";
+import { RepositoryPage } from "@/features/repositories/repository-page";
+
 export default async function Page({
   params,
 }: {
   params: Promise<{ repoId: string }>;
 }) {
   const { repoId } = await params;
-  return <RepositoryWorkspace id={repoId} />;
+  return <RepositoryPage id={repoId} />;
 }

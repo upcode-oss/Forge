@@ -155,8 +155,14 @@ export function CreateRepositoryButton({
     </>
   );
 }
-export function RepositoryList() {
-  const resource = useResource<Repository[]>("/repositories");
+export function RepositoryList({
+  publicOnly = false,
+}: {
+  publicOnly?: boolean;
+}) {
+  const resource = useResource<Repository[]>(
+    publicOnly ? "/repositories?scope=public" : "/repositories",
+  );
   const [query, setQuery] = useState("");
   const [visibility, setVisibility] = useState("all");
   const filtered =
@@ -170,13 +176,19 @@ export function RepositoryList() {
   return (
     <>
       <PageHeader
-        title="Repositories"
-        description="Build, share, and collaborate on your code."
+        title={publicOnly ? "Explore repositories" : "Repositories"}
+        description={
+          publicOnly
+            ? "Discover public code and projects from the Forge community."
+            : "Build, share, and collaborate on your code."
+        }
         actions={
-          <>
-            <ImportRepositoryButton />
-            <CreateRepositoryButton />
-          </>
+          !publicOnly && (
+            <>
+              <ImportRepositoryButton />
+              <CreateRepositoryButton />
+            </>
+          )
         }
       />
       <div className="repo-toolbar">
@@ -189,15 +201,17 @@ export function RepositoryList() {
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        <Select
-          aria-label="Filter visibility"
-          value={visibility}
-          onChange={(e) => setVisibility(e.target.value)}
-        >
-          <option value="all">All repositories</option>
-          <option value="private">Private</option>
-          <option value="public">Public</option>
-        </Select>
+        {!publicOnly && (
+          <Select
+            aria-label="Filter visibility"
+            value={visibility}
+            onChange={(e) => setVisibility(e.target.value)}
+          >
+            <option value="all">All repositories</option>
+            <option value="private">Private</option>
+            <option value="public">Public</option>
+          </Select>
+        )}
       </div>
       {resource.loading ? (
         <Loading />
@@ -212,7 +226,9 @@ export function RepositoryList() {
             description={
               query
                 ? "Try another search."
-                : "Create your first repository to start collaborating."
+                : publicOnly
+                  ? "Public repositories will appear here when they are shared."
+                  : "Create your first repository to start collaborating."
             }
           />
         </Card>

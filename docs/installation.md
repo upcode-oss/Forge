@@ -9,7 +9,9 @@ docker compose up --build -d
 docker compose ps
 ```
 
-Open <http://localhost:3000/setup>. Configure the instance name, public origin, default branch, database, and administrator. Use the setup token from `.env`. The first administrator password must contain at least 12 characters. The setup locks after installation. Subsequent users are created by administrators; public registration is disabled.
+Open <http://localhost:3000/setup>. Configure the instance name, public origin, default branch, database, and administrator. Use the setup token from `.env`. The first administrator password must contain at least 12 characters. The setup locks after installation. Administrators can create subsequent users directly or enable **Instance & System → Allow public registration**. Registration at `/register` is disabled by default, creates regular accounts, and requires a password of at least 12 characters. Turning registration off prevents new sign-ups and keeps existing accounts active.
+
+Visitors can explore public repositories at `/repositories` or `/explore/repositories`, open repository links at `/repositories/<id>`, and view user profiles at `/u/<username>` and public organization profiles at `/o/<slug>` without an account. Signed-in users see their accessible repositories at `/repositories`; the public explorer always shows public repositories. Private repositories and private organizations remain restricted. Migration `0007` adds the registration setting automatically when the backend starts after an upgrade; existing instances keep registration disabled.
 
 Sign in and create a repository. Generate a token under **Profile & Access Tokens**, then use your username and token as Git's HTTP credentials. Public repositories allow anonymous clone/fetch. All pushes require a write token and repository write or maintain access. The web application currently requires sign-in even for public repository browsing.
 

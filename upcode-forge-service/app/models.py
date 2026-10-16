@@ -28,6 +28,7 @@ class Instance(Base):
     name: Mapped[str] = mapped_column(String(100))
     public_url: Mapped[str] = mapped_column(String(500))
     default_branch: Mapped[str] = mapped_column(String(100), default="main")
+    registration_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     smtp_config: Mapped[str | None] = mapped_column(Text)
 
 

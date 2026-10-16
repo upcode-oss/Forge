@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { Globe, LockKeyhole, Plus, Search, Users } from "lucide-react";
@@ -13,31 +12,7 @@ import { Input } from "@/components/ui/form";
 import { useResource } from "@/hooks/use-resource";
 import type { OrganizationSummary } from "@/types/api";
 
-export function OrganizationPublicHeader() {
-  return (
-    <header className="public-profile-nav">
-      <Link href="/" aria-label="Upcode Forge home">
-        <Image
-          src="/logo.png"
-          alt="Upcode Forge"
-          width={714}
-          height={631}
-          className="public-profile-logo"
-          sizes="46px"
-          priority
-        />
-      </Link>
-      <div className="page-actions">
-        <Button asChild variant="ghost">
-          <Link href="/explore">Explore organizations</Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href="/organizations">My organizations</Link>
-        </Button>
-      </div>
-    </header>
-  );
-}
+export { PublicHeader as OrganizationPublicHeader } from "@/components/public-header";
 
 export function OrganizationCards({
   organizations,

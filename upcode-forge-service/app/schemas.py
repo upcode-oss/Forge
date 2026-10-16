@@ -10,11 +10,17 @@ class Credentials(BaseModel):
     password: str = Field(min_length=1, max_length=256)
 
 
-class UserCreate(Credentials):
+class Registration(Credentials):
     email: EmailStr
     display_name: str = Field(min_length=1, max_length=100)
-    is_admin: bool = False
     password: str = Field(min_length=12, max_length=256)
+
+    @field_validator("display_name")
+    @classmethod
+    def display_name_valid(cls, value):
+        if not value.strip():
+            raise ValueError("Display name cannot be blank")
+        return value.strip()
 
     @field_validator("username")
     @classmethod
@@ -24,6 +30,10 @@ class UserCreate(Credentials):
                 "Use lowercase letters, numbers, underscores or hyphens; start with a letter"
             )
         return value
+
+
+class UserCreate(Registration):
+    is_admin: bool = False
 
 
 class SMTP(BaseModel):
@@ -39,6 +49,7 @@ class InstanceUpdate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     public_url: str = Field(max_length=500)
     default_branch: str = Field(default="main", min_length=1, max_length=100)
+    registration_enabled: bool = False
 
     @field_validator("public_url")
     @classmethod

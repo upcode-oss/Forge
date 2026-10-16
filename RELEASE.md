@@ -10,6 +10,10 @@ See [TODO.md](TODO.md) for the remaining roadmap and [installation documentation
 
 ## Added locally
 
+- Optional public account registration at `/register`, controlled by the instance administrator under **Instance & System → Allow public registration**. Registration is disabled by default, creates regular active accounts, uses the existing password rules and request protection, limits attempts, and signs new users in. Migration `0007` preserves existing installations with registration disabled.
+
+- Anonymous browsing of public repositories, including files, README, branches, commits, issues, pull requests, and comments. Public repository discovery lives at `/explore/repositories`; repository links keep their `/repositories/<id>` URLs. Shared navigation connects repositories, user profiles, organization profiles, sign-in, and registration. Private repositories and repositories in private organizations remain restricted, and write operations still require authenticated permissions.
+
 - Repository deletion from repository settings, including organization repositories with inherited Maintain access. Deletion requires typing the full owner/repository name and removes Git history, issues, pull requests, comments, and collaborator grants. Git files are restored if the database transaction fails.
 
 - Refined organization repository lists with compact rows, repository counts, branch details, and expandable HTTPS/SSH clone controls. Repository pages now use spaced breadcrumbs and a linked owner heading, with visibility icons for public and private repositories.

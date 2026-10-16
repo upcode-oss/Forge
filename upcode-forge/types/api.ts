@@ -70,6 +70,7 @@ export type Instance = {
   name: string;
   public_url: string;
   default_branch: string;
+  registration_enabled: boolean;
   version: string;
 };
 export type Repository = {
