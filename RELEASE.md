@@ -10,6 +10,8 @@ See [TODO.md](TODO.md) for the remaining roadmap and [installation documentation
 
 ## Added locally
 
+- Optional database containers no longer require passwords during Compose configuration when their profile is disabled. SQLite and external database deployments need only the Forge application secrets; configure database container passwords when enabling the matching PostgreSQL or MariaDB profile.
+
 - Optional public account registration at `/register`, controlled by the instance administrator under **Instance & System → Allow public registration**. Registration is disabled by default, creates regular active accounts, uses the existing password rules and request protection, limits attempts, and signs new users in. Migration `0007` preserves existing installations with registration disabled.
 
 - Anonymous browsing of public repositories, including files, README, branches, commits, issues, pull requests, and comments. Public repository discovery lives at `/explore/repositories`; repository links keep their `/repositories/<id>` URLs. Shared navigation connects repositories, user profiles, organization profiles, sign-in, and registration. Private repositories and repositories in private organizations remain restricted, and write operations still require authenticated permissions.

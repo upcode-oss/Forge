@@ -43,9 +43,9 @@ The Ed25519 server host key is created once under `/data/ssh/host_ed25519`, with
 
 ## Database selection
 
-SQLite is the default and stores its database at `/data/forge.db` inside `forge_data`.
+SQLite is the default and stores its database at `/data/forge.db` inside `forge_data`. A normal `docker compose up -d` starts only Forge's backend and frontend. `POSTGRES_PASSWORD`, `MARIADB_PASSWORD`, and `MARIADB_ROOT_PASSWORD` can be omitted or left empty when using SQLite or an external database. `FORGE_SECRET_KEY` and `FORGE_SETUP_TOKEN` remain required for every installation.
 
-For PostgreSQL, replace `POSTGRES_PASSWORD` in `.env`, then run:
+For the optional PostgreSQL container, set `POSTGRES_PASSWORD` in `.env`, then run:
 
 ```bash
 docker compose --profile postgres up --build -d
@@ -53,7 +53,7 @@ docker compose --profile postgres up --build -d
 
 Choose PostgreSQL in setup: host `postgres`, port `5432`, database/user `forge` (or the values from `.env`), and the configured password.
 
-For MariaDB, replace `MARIADB_PASSWORD` and `MARIADB_ROOT_PASSWORD`, then run:
+For the optional MariaDB container, set `MARIADB_PASSWORD` and `MARIADB_ROOT_PASSWORD` in `.env`, then run:
 
 ```bash
 docker compose --profile mariadb up --build -d
