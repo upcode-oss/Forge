@@ -8,7 +8,11 @@ COPY app ./app
 RUN pip install .
 COPY alembic.ini ./
 COPY alembic ./alembic
-RUN mkdir /data && chown forge:forge /data
+# COPY preserves source modes, including 0600 files from restrictive host umasks.
+# Keep application code owned by root and readable by the runtime user.
+RUN find /app -type d -exec chmod 0755 {} + \
+    && find /app -type f -exec chmod 0644 {} + \
+    && install -d -o forge -g forge -m 0700 /data
 USER forge
 EXPOSE 8000 2222
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-proxy-headers"]

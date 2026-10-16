@@ -10,6 +10,8 @@ See [TODO.md](TODO.md) for the remaining roadmap and [installation documentation
 
 ## Added locally
 
+- Backend images normalize application and Alembic file permissions before switching to the unprivileged `forge` user. Builds from checkouts with restrictive file modes (such as a `077` host umask) can now start, run setup, and migrate the database without granting the application write access to its code.
+
 - Optional database containers no longer require passwords during Compose configuration when their profile is disabled. SQLite and external database deployments need only the Forge application secrets; configure database container passwords when enabling the matching PostgreSQL or MariaDB profile.
 
 - Optional public account registration at `/register`, controlled by the instance administrator under **Instance & System → Allow public registration**. Registration is disabled by default, creates regular active accounts, uses the existing password rules and request protection, limits attempts, and signs new users in. Migration `0007` preserves existing installations with registration disabled.

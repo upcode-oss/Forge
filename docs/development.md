@@ -37,6 +37,13 @@ The frontend defaults to backend `http://127.0.0.1:8000`; override `BACKEND_INTE
 
 Tests use disposable SQLite databases and Git repositories, including an HTTP server bound to an ephemeral loopback port. They do not use the application data volume or external SMTP. SQL schema compilation covers PostgreSQL and MySQL dialects; this is separate from running integration tests against live database services. The initial implementation was also checked manually against PostgreSQL 17 and MariaDB 11 containers, including setup, migrations, SQLAlchemy writes, and encrypted configuration restore.
 
+The optional container regression requires a running Docker daemon. It builds the backend from a temporary context with `0700` directories and `0600` files, then starts the actual image as its default non-root user. It checks code readability without code write access, HTTP health, SQLite setup and migrations, Git repository creation, and persistence across a restart, including the SSH host key. It creates and removes its own test image and container without accessing deployment volumes:
+
+```bash
+cd upcode-forge-service
+FORGE_TEST_DOCKER=1 python -m pytest tests/test_container_runtime.py
+```
+
 SSH tests validate key parsing and OpenSSH fingerprints, account/key/repository permissions, revocation on existing connections, command and path restrictions, pack streaming, a real Git push through the command handler, size limits, and timeouts. `tests/test_ssh_network.py` additionally runs a real OpenSSH clone/push against AsyncSSH, checks the pinned server host key, rejects a shell command, and checks revocation. That test requires the installed backend dependencies, OpenSSH `ssh`/`ssh-keygen` clients, and permission to bind loopback. Unit/API fixtures leave the SSH listener disabled even if it is enabled in your shell environment.
 
 Organization tests cover creation by regular users, unique URL names, public search and pagination, private profile/member/avatar access, profile membership badges, the role matrix, membership revocation, image normalization, deactivation, deletion, and simultaneous Owner departures. Frontend rendering tests cover organization forms, role-specific member controls, and public organization profiles.
