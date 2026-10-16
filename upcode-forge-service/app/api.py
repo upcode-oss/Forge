@@ -9,7 +9,7 @@ from sqlalchemy import URL, delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import database, organization_access, repository_import
+from app import database, organization_access, repository_deletion, repository_import
 from app import git_service as git
 from app.avatars import avatar_url
 from app.config import settings
@@ -477,6 +477,19 @@ def import_repository(payload: RepoImport, db=Depends(get_db), user=Depends(curr
 @router.get("/repositories/{repo_id}")
 def repository(repo_id: int, db=Depends(get_db), user=Depends(current_user)):
     return repo_data(db, access(db, repo_id, user), user)
+
+
+@router.delete("/repositories/{repo_id}", status_code=204)
+def delete_repository(repo_id: int, db=Depends(get_db), user=Depends(current_user)):
+    with organization_access.mutation_lock:
+        item = access(db, repo_id, user, "maintain")
+        try:
+            repository_deletion.remove(db, item)
+        except OSError as error:
+            raise HTTPException(
+                500, "Could not delete repository files. Please try again."
+            ) from error
+    return Response(status_code=204)
 
 
 @router.put("/repositories/{repo_id}")

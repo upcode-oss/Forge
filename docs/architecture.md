@@ -38,10 +38,12 @@ The SSH command parser accepts only `git-upload-pack` or `git-receive-pack` with
 | --- | --- |
 | Read | Browse, clone, fetch, read issues and pull requests |
 | Write | Read plus push, create issues/pull requests, comment, close/reopen tickets |
-| Maintain | Write plus merge, change settings, manage collaborators |
+| Maintain | Write plus merge, change settings, manage collaborators, delete repositories |
 | Owner / instance administrator | Maintain access automatically |
 
 Public visibility grants anonymous Git read access. Repository workspace pages require authentication. Public user profiles, organization profiles, and organization search work without an account. Users without private repository access receive 404. Repository file storage uses database IDs, so user-supplied names are never filesystem paths.
+
+Repository settings include permanent deletion with a full owner/repository name confirmation. The DELETE API requires Maintain access and removes comments, issues/pull requests, collaborator grants, and the repository in one SQL transaction. Git storage is first renamed to a unique retired directory and restored if the transaction fails, then removed after commit. Filesystem cleanup failures after commit are logged for administrator cleanup; retired directories are never served or reused for new repositories.
 
 ## Organizations
 

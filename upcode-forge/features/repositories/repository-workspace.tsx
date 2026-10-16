@@ -30,6 +30,7 @@ import { api, json } from "@/services/api";
 import { formatDate } from "@/lib/utils";
 import type { Commit, Repository, Ticket, TreeEntry } from "@/types/api";
 import { CloneBar, type CloneProtocol } from "./clone-bar";
+import { DeleteRepositoryCard } from "./delete-repository-card";
 
 export function Diff({ value }: { value: string }) {
   return (
@@ -708,7 +709,7 @@ function RepositorySettings({
     }
   }
   return (
-    <div className="content-grid">
+    <div className="content-grid repository-settings">
       <Card>
         <CardHeader
           title="Repository settings"
@@ -762,7 +763,7 @@ function RepositorySettings({
         />
         <p className="small muted">
           Read: browse and clone. Write: push, issues, comments, and pull
-          requests. Maintain: merge and manage access.
+          requests. Maintain: merge, manage access, and delete the repository.
         </p>
         {members.loading ? (
           <Loading />
@@ -801,6 +802,7 @@ function RepositorySettings({
           </Button>
         </form>
       </Card>
+      <DeleteRepositoryCard repo={repo} />
     </div>
   );
 }
@@ -898,18 +900,18 @@ export function RepositoryWorkspace({ id }: { id: string }) {
           </button>
         ))}
       </div>
-      {branchResource.loading ? (
+      {tab === "settings" ? (
+        <RepositorySettings
+          repo={repo}
+          branches={branches}
+          reload={resource.reload}
+        />
+      ) : branchResource.loading ? (
         <Loading />
       ) : branchResource.error ? (
         <ErrorState
           message={branchResource.error}
           retry={branchResource.reload}
-        />
-      ) : tab === "settings" ? (
-        <RepositorySettings
-          repo={repo}
-          branches={branches}
-          reload={resource.reload}
         />
       ) : tab === "issues" || tab === "pulls" ? (
         <Tickets

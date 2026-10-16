@@ -500,6 +500,49 @@ test("organization repositories render clone URLs and keep Reader actions read o
   }
 });
 
+test("repository deletion is offered only to users with Maintain access", () => {
+  const { ToastProvider } = loadTypeScript(
+    resolve(root, "components/ui/toast.tsx"),
+  );
+  const { DeleteRepositoryCard } = loadTypeScript(
+    resolve(root, "features/repositories/delete-repository-card.tsx"),
+  );
+  const { AppRouterContext } = createRequire(import.meta.url)(
+    "next/dist/shared/lib/app-router-context.shared-runtime",
+  );
+  for (const owner_type of ["user", "organization"]) {
+    for (const role of ["read", "write", "maintain"]) {
+      const markup = renderToStaticMarkup(
+        React.createElement(
+          AppRouterContext.Provider,
+          { value: { replace() {}, refresh() {} } },
+          React.createElement(
+            ToastProvider,
+            null,
+            React.createElement(DeleteRepositoryCard, {
+              repo: {
+                id: 42,
+                owner: "upcode",
+                name: "project",
+                owner_type,
+                owner_profile_url:
+                  owner_type === "user" ? "/u/upcode" : "/o/upcode",
+                role,
+              },
+            }),
+          ),
+        ),
+      );
+      assert.equal(markup.includes("Delete repository"), role === "maintain");
+      if (role === "maintain") {
+        assert.match(markup, /This cannot be undone/);
+        assert.match(markup, /Git history, issues, pull requests, comments/);
+        assert.match(markup, /button-destructive/);
+      }
+    }
+  }
+});
+
 for (const role of [null, "reader", "maintainer", "owner"]) {
   test(`organization members expose controls appropriate to ${role ?? "public visitor"}`, () => {
     const resource = loadTypeScript(resolve(root, "hooks/use-resource.ts"));
