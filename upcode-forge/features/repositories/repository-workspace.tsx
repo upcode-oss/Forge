@@ -4,18 +4,21 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import {
   ArrowLeft,
+  Building2,
+  ChevronRight,
   CircleDot,
   Code2,
   FileCode,
   Folder,
+  FolderGit2,
   GitBranch,
   GitCommitHorizontal,
   GitPullRequest,
+  Globe,
   LockKeyhole,
   Plus,
   Settings,
 } from "lucide-react";
-import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
@@ -819,29 +822,50 @@ export function RepositoryWorkspace({ id }: { id: string }) {
       : repo.clone_url;
   return (
     <>
-      <Link href="/repositories" className="text-link small">
-        <ArrowLeft />
-        All repositories
-      </Link>
-      {repo.owner_type === "organization" && (
-        <Link href={repo.owner_profile_url} className="text-link small">
-          Organization: {repo.owner}
-        </Link>
-      )}
-      <div className="repository-heading">
-        <PageHeader
-          title={`${repo.owner} / ${repo.name}`}
-          description={
-            repo.description || "Your code, versioned and connected."
-          }
-          actions={
+      <nav className="repository-breadcrumbs" aria-label="Breadcrumb">
+        <ol>
+          <li>
+            <Link href="/repositories">
+              <FolderGit2 aria-hidden="true" />
+              All repositories
+            </Link>
+          </li>
+          {repo.owner_type === "organization" && (
+            <li>
+              <ChevronRight aria-hidden="true" />
+              <Link href={repo.owner_profile_url}>
+                <Building2 aria-hidden="true" />
+                {repo.owner}
+              </Link>
+            </li>
+          )}
+          <li>
+            <ChevronRight aria-hidden="true" />
+            <span aria-current="page">{repo.name}</span>
+          </li>
+        </ol>
+      </nav>
+      <header className="repository-heading">
+        <div className="repo-symbol" aria-hidden="true">
+          {repo.owner_type === "organization" ? <Building2 /> : <FolderGit2 />}
+        </div>
+        <div className="repository-heading-content">
+          <div className="repository-heading-title">
+            <h1>
+              <Link href={repo.owner_profile_url}>{repo.owner}</Link>
+              <span className="repository-heading-separator">/</span>
+              <span>{repo.name}</span>
+            </h1>
             <span className="badge">
-              <LockKeyhole />
+              {repo.visibility === "private" ? <LockKeyhole /> : <Globe />}
               {repo.visibility}
             </span>
-          }
-        />
-      </div>
+          </div>
+          <p className="muted">
+            {repo.description || "Your code, versioned and connected."}
+          </p>
+        </div>
+      </header>
       <CloneBar
         httpsUrl={repo.clone_url}
         sshUrl={repo.ssh_clone_url}

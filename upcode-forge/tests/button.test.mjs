@@ -466,6 +466,8 @@ test("organization repositories render clone URLs and keep Reader actions read o
             owner: "upcode",
             description: "Our project",
             visibility: "private",
+            default_branch: "main",
+            created_at: "2026-01-01T00:00:00Z",
             clone_url:
               "https://forge.example/git/organizations/upcode/project.git",
             ssh_clone_url:
