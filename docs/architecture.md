@@ -47,6 +47,16 @@ Instance metadata, including the registration state, is public; SMTP and adminis
 
 Repository settings include permanent deletion with a full owner/repository name confirmation. The DELETE API requires Maintain access and removes comments, issues/pull requests, collaborator grants, and the repository in one SQL transaction. Git storage is first renamed to a unique retired directory and restored if the transaction fails, then removed after commit. Filesystem cleanup failures after commit are logged for administrator cleanup; retired directories are never served or reused for new repositories.
 
+## Forge and Sprint connection
+
+Instance administrators can connect one Sprint instance under **Instance & System → Sprint connection**. Sprint offers the same workflow under **Administration → Integrations** to accounts with `settings.manage`. Enter the other instance's public origin and its administrator credentials on either side. Both applications must include the instance-link feature. Forge uses its configured public URL, and Sprint uses `PUBLIC_APP_URL`; both origins must be reachable from the opposite backend. Use HTTPS when connecting across an untrusted network. Redirects are rejected and TLS certificates are verified.
+
+Protocol v1 uses `/api/v1/integrations/instance` in both services. The initiating side commits a pending record with a random connection ID and key, then calls the other side's credential-protected `/pair` endpoint. The receiving side checks its own administrator credentials and calls back to `/peer` with that key to verify the initiating origin and product before saving the reciprocal connection. Both sides store the key encrypted with their existing application encryption; administrator passwords are used only during pairing and are never persisted. Peer keys authorize only connection identity, connectivity checks and removal of that specific connection. They do not grant access to users, repositories, or projects.
+
+`POST /test` checks both network directions. A lost pairing response leaves a visible pending record that can be completed by retrying with credentials or checking an already accepted connection. Existing connections cannot be replaced implicitly. Disconnect normally revokes the connection on both sides. If the remote side is unreachable, an explicit local removal revokes the local key; the other side's entry then needs separate removal. Database migrations run through the existing startup workflow. No task, issue, repository, or user synchronization is enabled yet.
+
+`app/instance_link.py` contains the same protocol implementation in both repositories; keep both copies aligned when changing the wire protocol. `integrations.py` adapts Forge authentication, identity, and encryption. Sprint supplies its corresponding adapter under `app/api/v1/integrations.py`.
+
 ## Organizations
 
 Every active account can create an organization at **Organizations → New organization**. The creator becomes Owner. URL names are unique, permanent, and separate from user names; organization profiles use `/o/<slug>`. Owners and Maintainers add existing accounts by their Forge username. Membership is managed explicitly; there is no automatic public enrollment.

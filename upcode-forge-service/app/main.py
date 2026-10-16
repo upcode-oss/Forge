@@ -9,6 +9,7 @@ from app.api import router
 from app.avatars import router as avatars_router
 from app.config import settings
 from app.git_http import router as git_router
+from app.integrations import router as integrations_router
 from app.organizations import router as organizations_router
 from app.profiles import router as profiles_router
 from app.ssh_keys import router as ssh_keys_router
@@ -75,4 +76,5 @@ app.include_router(profiles_router)
 app.include_router(avatars_router)
 app.include_router(organizations_router)
 app.include_router(ssh_keys_router)
+app.include_router(integrations_router)
 app.include_router(git_router)
