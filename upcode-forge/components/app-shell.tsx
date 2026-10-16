@@ -38,6 +38,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { data: instance } = useInstance();
   useEffect(() => setMounted(true), []);
   const dark = mounted && resolvedTheme === "dark";
+  const instanceName = instance?.name ?? "Upcode Forge";
+  const version = (instance?.version ?? "0.1.0").replace(/^v/i, "");
   const navigation = (href: string, label: string, Icon: typeof BarChart3) => (
     <Link
       key={href}
@@ -68,16 +70,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
       <aside className={`sidebar upcode-forge-sidebar ${open ? "open" : ""}`}>
         <div className="sidebar-brand">
-          <Link href="/dashboard" aria-label="Forge dashboard">
+          <Link
+            href="/dashboard"
+            aria-label="Forge dashboard"
+            className="organization-brand-mark"
+          >
             <InstanceLogo
               instance={instance}
               className="sidebar-logo"
-              sizes="91px"
+              sizes="192px"
               priority
             />
           </Link>
-          <div className="sidebar-brand-copy">
-            <span>{instance?.name ?? "Upcode Forge"} · v0.1.0</span>
+          <div
+            className="sidebar-brand-copy"
+            title={`${instanceName} · v${version}`}
+          >
+            <span>
+              {instanceName} · v{version}
+            </span>
           </div>
           <Button
             className="mobile-menu sidebar-close"
