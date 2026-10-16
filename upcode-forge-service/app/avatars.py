@@ -1,13 +1,10 @@
 import hashlib
-import warnings
-from io import BytesIO
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy import select
-from starlette.concurrency import run_in_threadpool
 
 from app.database import get_db
+from app.images import normalize_image, read_image
 from app.models import User
 from app.security import current_user, throttle
 
@@ -24,41 +21,22 @@ def avatar_url(user):
 
 
 def normalize_avatar(data):
-    try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", Image.DecompressionBombWarning)
-            with Image.open(BytesIO(data), formats=("PNG", "JPEG", "WEBP")) as image:
-                if image.width * image.height > MAX_AVATAR_PIXELS:
-                    raise HTTPException(
-                        413, "Profile pictures must contain at most 16 million pixels"
-                    )
-                image.load()
-                image = ImageOps.exif_transpose(image).convert("RGBA")
-                square = ImageOps.fit(
-                    image, (AVATAR_SIZE, AVATAR_SIZE), method=Image.Resampling.LANCZOS
-                )
-                # A new image drops EXIF, location information, comments and color profiles.
-                clean = Image.new("RGBA", square.size)
-                clean.paste(square)
-                output = BytesIO()
-                clean.save(output, format="PNG")
-                return output.getvalue()
-    except (Image.DecompressionBombError, Image.DecompressionBombWarning) as error:
-        raise HTTPException(413, "Profile picture dimensions are too large") from error
-    except (UnidentifiedImageError, OSError, ValueError, SyntaxError) as error:
-        raise HTTPException(400, "Upload a valid PNG, JPEG or WebP image") from error
+    return normalize_image(
+        data,
+        size=(AVATAR_SIZE, AVATAR_SIZE),
+        max_pixels=MAX_AVATAR_PIXELS,
+        label="Profile pictures",
+        crop=True,
+    )
 
 
 async def read_avatar(request: Request):
-    content_type = request.headers.get("content-type", "").split(";", 1)[0].lower()
-    if content_type not in ("image/png", "image/jpeg", "image/webp", "application/octet-stream"):
-        raise HTTPException(415, "Choose a PNG, JPEG or WebP image")
-    data = bytearray()
-    async for chunk in request.stream():
-        if len(data) + len(chunk) > MAX_AVATAR_BYTES:
-            raise HTTPException(413, "Profile pictures must be 5 MiB or smaller")
-        data.extend(chunk)
-    return await run_in_threadpool(normalize_avatar, bytes(data))
+    return await read_image(
+        request,
+        normalize_avatar,
+        max_bytes=MAX_AVATAR_BYTES,
+        label="Profile pictures",
+    )
 
 
 @router.put("/profile/avatar")

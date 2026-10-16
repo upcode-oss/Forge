@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app import database, organization_access, repository_deletion, repository_import
 from app import git_service as git
 from app.avatars import avatar_url
+from app.branding import logo_url
 from app.config import settings
 from app.database import get_db
 from app.models import (
@@ -262,6 +263,7 @@ def instance(db=Depends(get_db)):
     item = db.get(Instance, 1)
     return {
         "name": item.name,
+        "logo_url": logo_url(item),
         "public_url": item.public_url,
         "default_branch": item.default_branch,
         "registration_enabled": item.registration_enabled,

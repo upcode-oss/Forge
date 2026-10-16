@@ -1,18 +1,17 @@
 "use client";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/form";
+import { InstanceLogo } from "@/components/instance-logo";
 import { api, json } from "@/services/api";
-import { useResource } from "@/hooks/use-resource";
-import type { Instance } from "@/types/api";
+import { useInstance } from "@/hooks/use-instance";
 
 export default function Login() {
   const router = useRouter();
-  const instance = useResource<Instance>("/instance");
+  const instance = useInstance();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -43,9 +42,8 @@ export default function Login() {
     <main className="centered-page">
       <Card className="auth-card">
         <div className="auth-heading">
-          <Image
-            src="/logo.png"
-            alt="Upcode Forge"
+          <InstanceLogo
+            instance={instance.data}
             width={220}
             height={70}
             priority

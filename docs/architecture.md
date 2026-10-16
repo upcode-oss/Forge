@@ -13,6 +13,7 @@ The FastAPI application lives in `upcode-forge-service/app/`:
 | `models.py` | Instance, users, sessions/tokens, repositories, memberships, tickets, comments |
 | `schemas.py` | Validated API request payloads |
 | `security.py` | Argon2 passwords, hashed session/token secrets, authentication, throttling |
+| `images.py`, `branding.py` | Bounded raster image normalization and administrator-managed instance logos |
 | `api.py` | Setup, authentication, optional registration, administration, repository access, and collaboration |
 | `organizations.py` | Organization profiles, discovery, private visibility, avatars, and role-based memberships |
 | `organization_access.py`, `repository_access.py` | Shared organization and repository access checks, inherited roles, and Git namespace resolution |
@@ -46,6 +47,12 @@ Public visibility grants anonymous Git and browser read access. Repository pages
 Instance metadata, including the registration state, is public; SMTP and administrator account management remain protected. Only instance administrators can update the persisted `registration_enabled` setting. Migration `0007` defaults it to false on existing installations. `/auth/register` checks the setting on every request, validates the same username, email, and password rules as administrator-created accounts, rate limits attempts, always creates a regular active account, and starts a session with the existing HttpOnly cookie settings. Disabling registration does not revoke existing accounts or sessions.
 
 Repository settings include permanent deletion with a full owner/repository name confirmation. The DELETE API requires Maintain access and removes comments, issues/pull requests, collaborator grants, and the repository in one SQL transaction. Git storage is first renamed to a unique retired directory and restored if the transaction fails, then removed after commit. Filesystem cleanup failures after commit are logged for administrator cleanup; retired directories are never served or reused for new repositories.
+
+## Instance logo
+
+Administrators can upload, preview, replace, or reset the instance logo under **Instance & System → Branding**. PNG, JPEG and WebP uploads are limited to 5 MiB and 16 million pixels. The shared image pipeline validates and decodes the file, applies EXIF orientation, removes metadata, and produces a PNG. Logos retain transparency and aspect ratio, are reduced to fit within 512 × 512 pixels, and are not enlarged. Profile pictures continue to use their existing square crop.
+
+Migration `0009` adds nullable logo bytes and a SHA-256 digest to the instance record, preserving existing settings. `/instance` exposes only the digest-based `logo_url`; the image is public so it also works before sign-in. Only administrators may upload or remove a logo, using the existing session and browser request protection. Replaced and removed image URLs return 404. The frontend updates mounted instance views after a change and uses the custom logo in the sidebar, public navigation, login and registration, falling back to the bundled Forge logo after reset or an image load failure.
 
 ## Forge and Sprint connection
 

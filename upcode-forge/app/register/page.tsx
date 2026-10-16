@@ -1,20 +1,19 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Empty, ErrorState, Loading } from "@/components/states";
+import { InstanceLogo } from "@/components/instance-logo";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/form";
-import { useResource } from "@/hooks/use-resource";
+import { useInstance } from "@/hooks/use-instance";
 import { api, ApiError, json } from "@/services/api";
-import type { Instance } from "@/types/api";
 
 export default function Register() {
   const router = useRouter();
-  const instance = useResource<Instance>("/instance");
+  const instance = useInstance();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -50,9 +49,8 @@ export default function Register() {
     <main className="centered-page">
       <Card className="auth-card">
         <div className="auth-heading">
-          <Image
-            src="/logo.png"
-            alt="Upcode Forge"
+          <InstanceLogo
+            instance={instance.data}
             width={220}
             height={70}
             priority

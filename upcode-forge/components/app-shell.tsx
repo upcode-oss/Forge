@@ -17,16 +17,15 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/avatar";
+import { InstanceLogo } from "@/components/instance-logo";
 import { useAuth } from "@/features/auth/auth-context";
-import { useResource } from "@/hooks/use-resource";
+import { useInstance } from "@/hooks/use-instance";
 import { api } from "@/services/api";
 import { useToast } from "@/components/ui/toast";
-import type { Instance } from "@/types/api";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const user = useAuth();
@@ -36,7 +35,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
-  const { data: instance } = useResource<Instance>("/instance");
+  const { data: instance } = useInstance();
   useEffect(() => setMounted(true), []);
   const dark = mounted && resolvedTheme === "dark";
   const navigation = (href: string, label: string, Icon: typeof BarChart3) => (
@@ -70,11 +69,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside className={`sidebar upcode-forge-sidebar ${open ? "open" : ""}`}>
         <div className="sidebar-brand">
           <Link href="/dashboard" aria-label="Forge dashboard">
-            <Image
-              src="/logo.png"
-              alt="Upcode Forge"
-              width={714}
-              height={631}
+            <InstanceLogo
+              instance={instance}
               className="sidebar-logo"
               sizes="91px"
               priority

@@ -9,13 +9,15 @@ import { useToast } from "@/components/ui/toast";
 import { ErrorState, Loading } from "@/components/states";
 import { useAuth } from "@/features/auth/auth-context";
 import { InstanceConnection } from "@/features/integrations/instance-connection";
+import { InstanceLogoUploader } from "@/features/settings/instance-logo-uploader";
+import { instanceUpdated, useInstance } from "@/hooks/use-instance";
 import { useResource } from "@/hooks/use-resource";
 import { api, json } from "@/services/api";
-import type { Instance, SMTP } from "@/types/api";
+import type { SMTP } from "@/types/api";
 
 export default function Settings() {
   const me = useAuth();
-  const instance = useResource<Instance>(me.is_admin ? "/instance" : null);
+  const instance = useInstance(me.is_admin);
   const smtp = useResource<SMTP>(me.is_admin ? "/instance/smtp" : null);
   const { notify } = useToast();
   const [busy, setBusy] = useState(false);
@@ -40,7 +42,7 @@ export default function Settings() {
         ),
       });
       if (path.endsWith("smtp")) smtp.reload();
-      else instance.reload();
+      else instanceUpdated();
       notify("Settings saved");
     } catch (e) {
       notify((e as Error).message, "error");
@@ -65,7 +67,7 @@ export default function Settings() {
     <>
       <PageHeader
         title="Instance & System"
-        description="Configure your instance, Sprint connection, Git defaults, and outgoing email."
+        description="Configure your instance, logo, Sprint connection, Git defaults, and outgoing email."
       />
       <div className="content-grid">
         <InstanceConnection />
@@ -141,6 +143,19 @@ export default function Settings() {
             forge_data volume. Database changes require a backup and migration;
             the setup wizard stays locked.
           </p>
+        </Card>
+        <Card>
+          <CardHeader
+            title="Branding"
+            description="Use your own logo throughout this Forge instance."
+          />
+          {instance.loading ? (
+            <Loading />
+          ) : instance.error ? (
+            <ErrorState message={instance.error} retry={instance.reload} />
+          ) : instance.data ? (
+            <InstanceLogoUploader instance={instance.data} />
+          ) : null}
         </Card>
         <Card>
           <CardHeader

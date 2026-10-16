@@ -68,6 +68,7 @@ export type PublicProfile = ProfileFields & {
 };
 export type Instance = {
   name: string;
+  logo_url: string | null;
   public_url: string;
   default_branch: string;
   registration_enabled: boolean;

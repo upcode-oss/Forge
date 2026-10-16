@@ -36,6 +36,10 @@ class Instance(Base):
     default_branch: Mapped[str] = mapped_column(String(100), default="main")
     registration_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     smtp_config: Mapped[str | None] = mapped_column(Text)
+    logo: Mapped[bytes | None] = mapped_column(
+        LargeBinary().with_variant(MEDIUMBLOB(), "mysql"), deferred=True
+    )
+    logo_digest: Mapped[str | None] = mapped_column(String(64))
 
 
 class User(Base):

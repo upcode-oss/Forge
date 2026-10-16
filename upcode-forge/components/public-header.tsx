@@ -1,23 +1,21 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { InstanceLogo } from "@/components/instance-logo";
+import { useInstance } from "@/hooks/use-instance";
 import { useResource } from "@/hooks/use-resource";
-import type { Instance, User } from "@/types/api";
+import type { User } from "@/types/api";
 
 export function PublicHeader() {
   const session = useResource<User>("/auth/me");
-  const instance = useResource<Instance>("/instance");
+  const instance = useInstance();
   const signedIn = !!session.data?.username;
   return (
     <header className="public-profile-nav">
       <Link href="/" aria-label="Upcode Forge home">
-        <Image
-          src="/logo.png"
-          alt="Upcode Forge"
-          width={714}
-          height={631}
+        <InstanceLogo
+          instance={instance.data}
           className="public-profile-logo"
           sizes="46px"
           priority
