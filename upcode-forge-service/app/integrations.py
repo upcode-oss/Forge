@@ -22,6 +22,11 @@ def identity(db):
     return {"name": instance.name, "url": instance.public_url}
 
 
+def configure_url(db, url):
+    db.get(Instance, 1).public_url = url
+    db.commit()
+
+
 router = APIRouter(prefix="/api/v1")
 router.include_router(
     create_link_router(
@@ -31,6 +36,7 @@ router.include_router(
         admin=admin_user,
         authenticate=authenticate,
         identity=identity,
+        configure_url=configure_url,
         encrypt=lambda value: cipher().encrypt(value.encode()).decode(),
         decrypt=lambda value: cipher().decrypt(value.encode()).decode(),
     )

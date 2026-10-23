@@ -10,6 +10,8 @@ See [TODO.md](TODO.md) for the remaining roadmap and [installation documentation
 
 ## Added locally
 
+- Sprint pairing now exposes the local callback URL and lets administrators correct it before retrying a pending connection. Loopback defaults suggest the current browser origin with the correct port. Failed callbacks, mismatched public URLs, and upstream HTTP errors have specific diagnostics. Pending retries retain their existing connection ID and key.
+
 - Backend images normalize application and Alembic file permissions before switching to the unprivileged `forge` user. Builds from checkouts with restrictive file modes (such as a `077` host umask) can now start, run setup, and migrate the database without granting the application write access to its code.
 
 - Optional database containers no longer require passwords during Compose configuration when their profile is disabled. SQLite and external database deployments need only the Forge application secrets; configure database container passwords when enabling the matching PostgreSQL or MariaDB profile.

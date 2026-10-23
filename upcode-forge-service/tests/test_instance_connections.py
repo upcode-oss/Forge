@@ -50,6 +50,7 @@ def instances(tmp_path, monkeypatch):
                     raise HTTPException(401, "Invalid credentials")
 
             app = FastAPI()
+            local_identity = {"name": f"Test {product}", "url": f"https://{product}.test"}
             app.include_router(
                 create_link_router(
                     product=product,
@@ -57,10 +58,8 @@ def instances(tmp_path, monkeypatch):
                     get_db=database_dependency(engine),
                     admin=admin,
                     authenticate=authenticate,
-                    identity=lambda db, product=product: {
-                        "name": f"Test {product}",
-                        "url": f"https://{product}.test",
-                    },
+                    identity=lambda db, local=local_identity: local.copy(),
+                    configure_url=lambda db, url, local=local_identity: local.update(url=url),
                     encrypt=lambda value, cipher=cipher: cipher.encrypt(value.encode()).decode(),
                     decrypt=lambda value, cipher=cipher: cipher.decrypt(value.encode()).decode(),
                 ),
@@ -71,7 +70,10 @@ def instances(tmp_path, monkeypatch):
 
         def transport(request):
             calls.append((request.method, str(request.url)))
-            if request.url.host == failures["url"]:
+            if request.url.host == failures["url"] or request.url.host not in (
+                "forge.test",
+                "sprint.test",
+            ):
                 raise httpx.ConnectError("sensitive infrastructure detail", request=request)
             product = request.url.host.split(".")[0]
             response = clients[product].request(
@@ -82,7 +84,9 @@ def instances(tmp_path, monkeypatch):
             )
             if request.url.path.endswith("/pair") and failures["lose_pair_response"]:
                 raise httpx.ReadTimeout("Response lost after remote commit", request=request)
-            return httpx.Response(response.status_code, content=response.content)
+            return httpx.Response(
+                response.status_code, content=response.content, headers=response.headers
+            )
 
         monkeypatch.setattr(
             instance_link.httpx,
@@ -144,6 +148,42 @@ def test_wrong_credentials_can_be_retried(instances):
     assert clients["sprint"].get(PATH, headers=ADMIN).json() is None
     assert clients["forge"].get(PATH, headers=ADMIN).json()["state"] == "pending"
     assert connect(clients, "forge").status_code == 200
+
+
+@pytest.mark.parametrize("source", ["forge", "sprint"])
+def test_pending_connection_recovers_after_correcting_localhost_callback(instances, source):
+    clients, _, _, _ = instances
+    target = "sprint" if source == "forge" else "forge"
+    response = connect(clients, source, callback_url="http://localhost:3000")
+    assert response.status_code == 502
+    assert "callback to http://localhost:3000" in response.json()["detail"]
+    pending_id = clients[source].get(PATH, headers=ADMIN).json()["connection_id"]
+    assert clients[target].get(PATH, headers=ADMIN).json() is None
+    response = connect(clients, source, callback_url=f"https://{source}.test")
+    assert response.status_code == 200, response.text
+    assert response.json()["connection_id"] == pending_id
+    assert (
+        clients[source].get(PATH + "/identity", headers=ADMIN).json()["url"]
+        == f"https://{source}.test"
+    )
+    assert clients[source].get(PATH + "/identity").status_code == 403
+    assert clients[target].post(PATH + "/test", headers=ADMIN).status_code == 200
+
+
+def test_active_connection_cannot_change_local_url(instances):
+    clients, _, _, _ = instances
+    assert connect(clients, "forge").status_code == 200
+    before = clients["forge"].get(PATH + "/identity", headers=ADMIN).json()
+    assert connect(clients, "forge", callback_url="https://unexpected.test").status_code == 409
+    assert clients["forge"].get(PATH + "/identity", headers=ADMIN).json() == before
+
+
+def test_invalid_callback_is_rejected_before_contacting_peer(instances):
+    clients, _, calls, _ = instances
+    assert (
+        connect(clients, "forge", callback_url="http://user:password@forge.test").status_code == 422
+    )
+    assert calls == []
 
 
 def test_equivalent_origins_are_normalized(instances):
@@ -327,3 +367,60 @@ def test_peer_client_rejects_redirects_and_malformed_responses(monkeypatch):
             )
         assert error.value.status_code == 502
         assert "never-include-me" not in json.dumps(error.value.detail)
+
+
+@pytest.mark.parametrize("status", [404, 500, 502])
+def test_peer_http_failure_reports_origin_and_status_without_remote_body(monkeypatch, status):
+    real_client = httpx.Client
+    monkeypatch.setattr(
+        instance_link.httpx,
+        "Client",
+        lambda **kwargs: real_client(
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(
+                    status, text="password=do-not-expose internal traceback"
+                )
+            ),
+            **kwargs,
+        ),
+    )
+    with pytest.raises(HTTPException) as error:
+        instance_link.request_peer("https://sprint.test", "POST", "/pair")
+    assert "https://sprint.test" in error.value.detail
+    assert f"HTTP {status}" in error.value.detail
+    assert "do-not-expose" not in error.value.detail
+
+
+def test_forge_public_url_is_persisted_before_pairing_retry(admin, monkeypatch):
+    from app.instance_link import PeerStatus
+
+    def unreachable(*args, **kwargs):
+        raise HTTPException(502, "Network unavailable")
+
+    monkeypatch.setattr(instance_link, "request_peer", unreachable)
+    response = admin.post(
+        PATH,
+        json={
+            "url": "https://sprint.test",
+            "callback_url": "https://forge.test",
+            "username": "admin",
+            "password": "unused-until-peer-is-reachable",
+        },
+    )
+    assert response.status_code == 502
+    assert admin.get("/api/v1/instance").json()["public_url"] == "https://forge.test"
+    connection_id = admin.get(PATH).json()["connection_id"]
+
+    def paired(url, method, path, **kwargs):
+        assert kwargs["payload"]["identity"]["url"] == "https://forge.test"
+        return PeerStatus(
+            product="sprint", name="Sprint", url=url, connection_id=connection_id, state="connected"
+        )
+
+    monkeypatch.setattr(instance_link, "request_peer", paired)
+    assert (
+        admin.post(
+            PATH, json={"url": "https://sprint.test", "username": "admin", "password": "example"}
+        ).status_code
+        == 200
+    )

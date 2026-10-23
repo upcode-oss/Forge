@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { ExternalLink, Link2, RefreshCw, Unplug } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/toast";
 import { ErrorState, Loading } from "@/components/states";
 import { useResource } from "@/hooks/use-resource";
 import { api, json } from "@/services/api";
+import { initialCallbackUrl } from "@/lib/instance-link";
 
 type Connection = {
   connection_id: string;
@@ -27,13 +28,26 @@ export function InstanceConnection({
   peerName?: string;
 }) {
   const resource = useResource<Connection | null>(endpoint);
+  const identity = useResource<{ product: "forge" | "sprint"; url: string }>(
+    `${endpoint}/identity`,
+  );
   const { notify } = useToast();
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState<"both" | "local" | null>(null);
   const [checked, setChecked] = useState<"ok" | "failed" | null>(null);
   const [canRemoveLocally, setCanRemoveLocally] = useState(false);
   const [password, setPassword] = useState("");
+  const [callbackUrl, setCallbackUrl] = useState("");
   const connection = resource.data;
+  const ownName = peerName === "Forge" ? "Sprint" : "Forge";
+
+  useEffect(() => {
+    if (identity.data) {
+      setCallbackUrl(
+        initialCallbackUrl(identity.data.url, window.location.origin),
+      );
+    }
+  }, [identity.data]);
 
   async function connect(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -50,7 +64,7 @@ export function InstanceConnection({
       setCanRemoveLocally(true);
     } finally {
       setPassword("");
-      await resource.reload();
+      await Promise.all([resource.reload(), identity.reload()]);
       setBusy(false);
     }
   }
@@ -102,10 +116,16 @@ export function InstanceConnection({
         title={`${peerName} connection`}
         description={`Connect your ${peerName} instance here, or start from its settings. One setup links both instances.`}
       />
-      {resource.loading ? (
+      {resource.loading || identity.loading ? (
         <Loading />
-      ) : resource.error ? (
-        <ErrorState message={resource.error} retry={resource.reload} />
+      ) : resource.error || identity.error ? (
+        <ErrorState
+          message={resource.error || identity.error || "Connection information unavailable"}
+          retry={() => {
+            resource.reload();
+            identity.reload();
+          }}
+        />
       ) : (
         <div className="form-grid">
           {connection ? (
@@ -171,6 +191,26 @@ export function InstanceConnection({
               className="form-grid"
               onSubmit={(event) => void connect(event)}
             >
+              <Field
+                label={`This ${ownName} instance's URL`}
+                hint={`${peerName} calls back to this address. It must be reachable from the other backend. Saved as this instance's public URL when connecting.`}
+              >
+                <Input
+                  name="callback_url"
+                  type="url"
+                  required
+                  maxLength={500}
+                  value={callbackUrl}
+                  onChange={(event) => setCallbackUrl(event.target.value)}
+                  disabled={busy}
+                />
+              </Field>
+              {identity.data && identity.data.url !== callbackUrl ? (
+                <p className="muted small">
+                  Currently configured: {identity.data.url}. The address above
+                  will replace it.
+                </p>
+              ) : null}
               <Field
                 label={`${peerName} public URL`}
                 hint="Both public URLs must be reachable from the other server. Use HTTPS outside a trusted local network."

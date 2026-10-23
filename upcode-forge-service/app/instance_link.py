@@ -58,10 +58,16 @@ class LinkColumns:
 
 class ConnectInput(BaseModel):
     url: str = Field(max_length=500)
+    callback_url: str | None = Field(default=None, max_length=500)
     username: str = Field(min_length=1, max_length=254)
     password: SecretStr = Field(min_length=1, max_length=256)
 
     _url = field_validator("url")(origin)
+
+    @field_validator("callback_url")
+    @classmethod
+    def validate_callback(cls, value):
+        return origin(value) if value is not None else None
 
 
 class Identity(BaseModel):
@@ -94,7 +100,11 @@ def request_peer(url, method, path, *, secret=None, connection_id=None, payload=
         headers["X-Instance-Connection"] = str(connection_id)
     try:
         with (
-            httpx.Client(timeout=20, follow_redirects=False, trust_env=False) as client,
+            httpx.Client(
+                timeout=httpx.Timeout(45 if path in ("/pair", "/check") else 20, connect=5),
+                follow_redirects=False,
+                trust_env=False,
+            ) as client,
             client.stream(
                 method, f"{url}/api/v1{PREFIX}{path}", headers=headers, json=payload
             ) as response,
@@ -105,8 +115,34 @@ def request_peer(url, method, path, *, secret=None, connection_id=None, payload=
                 )
             if response.status_code == 409:
                 raise HTTPException(409, "The other instance already has a different connection")
+            if (
+                path == "/pair"
+                and response.headers.get("x-instance-link-failure") == "callback"
+                and payload
+            ):
+                raise HTTPException(
+                    502,
+                    "The other instance cannot verify the callback to "
+                    f"{payload['identity']['url']}. "
+                    "Check this instance's URL and make sure the other backend can reach it.",
+                )
+            if response.status_code == 404:
+                raise HTTPException(
+                    502,
+                    f"No instance connection endpoint was found at {url} (HTTP 404). "
+                    "Check the URL and update both applications.",
+                )
+            if response.status_code == 429:
+                raise HTTPException(
+                    429, "The other instance is rate-limiting pairing attempts. Try again later."
+                )
             if not response.is_success:
-                raise HTTPException(502, "The other instance could not complete the request")
+                raise HTTPException(
+                    502,
+                    f"The instance at {url} returned HTTP {response.status_code} "
+                    f"during {'pairing' if path == '/pair' else 'connection verification'}. "
+                    "Check its backend logs and both instance URLs.",
+                )
             content = bytearray()
             for chunk in response.iter_bytes():
                 content.extend(chunk)
@@ -115,11 +151,19 @@ def request_peer(url, method, path, *, secret=None, connection_id=None, payload=
             if method == "DELETE":
                 return None
             return PeerStatus.model_validate_json(content)
-    except (httpx.HTTPError, ValidationError) as exc:
+    except httpx.TimeoutException as exc:
+        raise HTTPException(
+            502, f"The request to {url} timed out. Check connectivity in both directions."
+        ) from exc
+    except httpx.HTTPError as exc:
         raise HTTPException(
             502,
-            "Cannot verify the other instance. Check both public URLs, "
-            "network access and TLS certificates.",
+            f"Cannot reach {url}. Check the instance URL, network access and TLS certificates. "
+            "In Docker, localhost refers to the current container.",
+        ) from exc
+    except ValidationError as exc:
+        raise HTTPException(
+            502, f"Invalid connection response from {url}. Update both applications."
         ) from exc
 
 
@@ -133,6 +177,7 @@ def create_link_router(
     identity,
     encrypt,
     decrypt,
+    configure_url=None,
     pair_limit=None,
     route_class=APIRoute,
 ):
@@ -173,11 +218,14 @@ def create_link_router(
         }
 
     def verified_peer(peer, row):
-        if (
-            peer.product != other
-            or peer.url != row.peer_url
-            or str(peer.connection_id) != row.connection_id
-        ):
+        if peer.url != row.peer_url:
+            raise HTTPException(
+                502,
+                f"The other instance advertises {peer.url}, "
+                f"but the connection uses {row.peer_url}. "
+                "Correct the public URL in the other instance's settings.",
+            )
+        if peer.product != other or str(peer.connection_id) != row.connection_id:
             raise HTTPException(502, "The other instance returned an unexpected identity")
 
     def peer_row(request, db):
@@ -203,6 +251,10 @@ def create_link_router(
     @router.get("", dependencies=[Depends(admin)])
     def detail(db=Depends(get_db)):
         return summary(db.get(model, 1))
+
+    @router.get("/identity", dependencies=[Depends(admin)])
+    def own_identity(db=Depends(get_db)):
+        return local_identity(db)
 
     @router.get("/peer")
     def peer(request: Request, db=Depends(get_db)):
@@ -247,14 +299,22 @@ def create_link_router(
             state="connected",
             created_at=datetime.now(UTC),
         )
-        remote = request_peer(
-            candidate.peer_url,
-            "GET",
-            "/peer",
-            secret=payload.secret.get_secret_value(),
-            connection_id=candidate.connection_id,
-        )
-        verified_peer(remote, candidate)
+        try:
+            remote = request_peer(
+                candidate.peer_url,
+                "GET",
+                "/peer",
+                secret=payload.secret.get_secret_value(),
+                connection_id=candidate.connection_id,
+            )
+            verified_peer(remote, candidate)
+        except HTTPException as exc:
+            # Only forward a fixed diagnostic marker, never arbitrary remote error bodies.
+            raise HTTPException(
+                502,
+                f"Verification callback to {candidate.peer_url} failed. {exc.detail}",
+                headers={"X-Instance-Link-Failure": "callback"},
+            ) from exc
         if row is None:
             row = candidate
             insert(db, row)
@@ -266,12 +326,18 @@ def create_link_router(
 
     @router.post("", dependencies=[Depends(admin)])
     def connect(payload: ConnectInput, db=Depends(get_db)):
-        own = local_identity(db)
-        if payload.url == own.url:
-            raise HTTPException(400, "An instance cannot connect to itself")
         row = db.get(model, 1)
         if row is not None and (row.state != "pending" or row.peer_url != payload.url):
             raise HTTPException(409, "Disconnect the existing instance first")
+        own = local_identity(db)
+        callback_url = payload.callback_url or own.url
+        if payload.url == callback_url:
+            raise HTTPException(400, "An instance cannot connect to itself")
+        if callback_url != own.url:
+            if configure_url is None:
+                raise HTTPException(422, "Configure this instance's public URL before connecting")
+            configure_url(db, callback_url)
+            own = local_identity(db)
         if row is None:
             row = model(
                 id=1,
