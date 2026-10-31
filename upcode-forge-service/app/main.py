@@ -14,6 +14,7 @@ from app.organizations import router as organizations_router
 from app.profiles import router as profiles_router
 from app.ssh_keys import router as ssh_keys_router
 from app.ssh_server import start_ssh_server
+from app.two_factor_routes import router as two_factor_router
 
 
 @asynccontextmanager
@@ -77,4 +78,5 @@ app.include_router(avatars_router)
 app.include_router(branding_router)
 app.include_router(organizations_router)
 app.include_router(ssh_keys_router)
+app.include_router(two_factor_router)
 app.include_router(git_router)

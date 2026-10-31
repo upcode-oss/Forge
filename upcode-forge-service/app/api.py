@@ -9,7 +9,7 @@ from sqlalchemy import URL, delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app import database, organization_access, repository_deletion, repository_import
+from app import database, organization_access, repository_deletion, repository_import, two_factor
 from app import git_service as git
 from app.avatars import avatar_url
 from app.branding import logo_url
@@ -30,8 +30,8 @@ from app.repository_access import access, public_repositories, role, visible
 from app.schemas import (
     SMTP,
     CommentInput,
-    Credentials,
     InstanceUpdate,
+    LoginCredentials,
     MemberInput,
     PasswordInput,
     Registration,
@@ -186,12 +186,22 @@ def setup(payload: Setup, request: Request):
 
 
 @router.post("/auth/login")
-def login(payload: Credentials, request: Request, response: Response, db=Depends(get_db)):
+def login(payload: LoginCredentials, request: Request, response: Response, db=Depends(get_db)):
     throttle(f"login:{request.client.host}")
     user = db.scalar(select(User).where(User.username == payload.username.lower()))
     valid = verify(payload.password, user.password_hash if user else dummy_hash)
     if not user or not valid or not user.is_active:
         raise HTTPException(401, "Invalid username or password")
+    two_factor.lock_account(db, user)
+    if user.mfa_secret_encrypted:
+        if not payload.two_factor_code:
+            return {"two_factor_required": True}
+        two_factor.verify_code(
+            db,
+            user,
+            payload.two_factor_code.get_secret_value(),
+            lambda value: database.cipher().decrypt(value.encode()).decode(),
+        )
     return start_session(db, user, response)
 
 

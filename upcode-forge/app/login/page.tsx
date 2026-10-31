@@ -14,6 +14,12 @@ export default function Login() {
   const instance = useInstance();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [twoFactor, setTwoFactor] = useState(false);
+  const [credentials, setCredentials] = useState<{
+    username: string;
+    password: string;
+  }>();
+  const [code, setCode] = useState("");
   useEffect(() => {
     api<{ completed: boolean }>("/setup/status")
       .then((s) => {
@@ -27,10 +33,27 @@ export default function Login() {
     setBusy(true);
     setError("");
     try {
-      await api("/auth/login", {
-        method: "POST",
-        body: json(Object.fromEntries(values)),
-      });
+      const result = await api<{ two_factor_required?: boolean }>(
+        "/auth/login",
+        {
+          method: "POST",
+          body: json(
+            twoFactor
+              ? { ...credentials, two_factor_code: code }
+              : Object.fromEntries(values),
+          ),
+        },
+      );
+      if (result.two_factor_required) {
+        setCredentials({
+          username: String(values.get("username")),
+          password: String(values.get("password")),
+        });
+        setTwoFactor(true);
+        return;
+      }
+      setCredentials(undefined);
+      setCode("");
       router.replace("/dashboard");
     } catch (e) {
       setError((e as Error).message);
@@ -48,27 +71,73 @@ export default function Login() {
             height={70}
             priority
           />
-          <h1>Welcome back</h1>
-          <p>Sign in to your Git workspace.</p>
+          <h1>{twoFactor ? "Verify your sign-in" : "Welcome back"}</h1>
+          <p>
+            {twoFactor
+              ? "Enter an authenticator code or an unused recovery code."
+              : "Sign in to your Git workspace."}
+          </p>
         </div>
-        <form className="form-grid" onSubmit={submit}>
-          <Field label="Username">
-            <Input name="username" autoComplete="username" required autoFocus />
-          </Field>
-          <Field label="Password">
-            <Input
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-            />
-          </Field>
+        <form
+          className="form-grid"
+          onSubmit={submit}
+          key={twoFactor ? "factor" : "password"}
+        >
+          {twoFactor ? (
+            <Field label="Authenticator or recovery code">
+              <Input
+                autoFocus
+                required
+                autoComplete="one-time-code"
+                name="two_factor_code"
+                maxLength={32}
+                value={code}
+                onChange={(event) => setCode(event.target.value)}
+              />
+            </Field>
+          ) : (
+            <>
+              <Field label="Username">
+                <Input
+                  name="username"
+                  autoComplete="username"
+                  required
+                  autoFocus
+                />
+              </Field>
+              <Field label="Password">
+                <Input
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                />
+              </Field>
+            </>
+          )}
           {error && (
             <p className="field-error" role="alert">
               {error}
             </p>
           )}
-          <Button loading={busy}>Sign in</Button>
+          <Button loading={busy}>
+            {twoFactor ? "Verify and sign in" : "Sign in"}
+          </Button>
+          {twoFactor ? (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy}
+              onClick={() => {
+                setTwoFactor(false);
+                setCredentials(undefined);
+                setCode("");
+                setError("");
+              }}
+            >
+              Back to password
+            </Button>
+          ) : null}
         </form>
         <p className="muted small auth-footnote">
           {instance.data?.registration_enabled ? (

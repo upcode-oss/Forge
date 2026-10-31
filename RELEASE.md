@@ -10,6 +10,8 @@ See [TODO.md](TODO.md) for the remaining roadmap and [installation documentation
 
 ## Added locally
 
+- Optional authenticator-based two-factor authentication under **Profile & Access Tokens**: locally generated QR codes, confirmed setup, ten single-use recovery codes, and password-plus-code checks for disabling or replacing recovery codes. Password-only login issues no session for enabled accounts. Factor changes revoke other browser sessions; Git tokens and SSH keys stay independent. Migration `0010` preserves existing accounts with 2FA disabled by default. See the [2FA guide](docs/two-factor-authentication.md).
+
 - Sprint instance pairing is deferred to a later release; its settings and API endpoints have been removed.
 
 - Backend images normalize application and Alembic file permissions before switching to the unprivileged `forge` user. Builds from checkouts with restrictive file modes (such as a `077` host umask) can now start, run setup, and migrate the database without granting the application write access to its code.

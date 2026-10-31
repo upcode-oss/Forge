@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     DateTime,
@@ -53,6 +54,13 @@ class User(Base):
     )
     avatar_digest: Mapped[str | None] = mapped_column(String(64))
     password_hash: Mapped[str] = mapped_column(String(255))
+    mfa_secret_encrypted: Mapped[str | None] = mapped_column(Text)
+    mfa_pending_secret_encrypted: Mapped[str | None] = mapped_column(Text)
+    mfa_pending_expires_at: Mapped[int | None] = mapped_column(BigInteger)
+    mfa_last_step: Mapped[int] = mapped_column(BigInteger, default=-1, server_default="-1")
+    mfa_recovery_hashes: Mapped[str] = mapped_column(Text, default="[]", server_default="[]")
+    mfa_failed_attempts: Mapped[int] = mapped_column(default=0, server_default="0")
+    mfa_locked_until: Mapped[int | None] = mapped_column(BigInteger)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

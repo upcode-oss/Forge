@@ -5,6 +5,7 @@
 | [Installation & Deployment](installation.md) | Compose, setup, databases, HTTPS, and persistence |
 | [Architecture](architecture.md) | Application layers, Git transport, authentication, and permissions |
 | [Development & Checks](development.md) | Local development and verification |
+| [Two-factor authentication](two-factor-authentication.md) | Authenticator setup, sign-in, recovery, and security |
 
 - [Project overview](../README.md)
 - [Open work](../TODO.md)

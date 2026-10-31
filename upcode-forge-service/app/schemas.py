@@ -10,6 +10,10 @@ class Credentials(BaseModel):
     password: str = Field(min_length=1, max_length=256)
 
 
+class LoginCredentials(Credentials):
+    two_factor_code: SecretStr | None = Field(default=None, max_length=32)
+
+
 class Registration(Credentials):
     email: EmailStr
     display_name: str = Field(min_length=1, max_length=100)

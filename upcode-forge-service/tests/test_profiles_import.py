@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from fastapi.testclient import TestClient
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
@@ -482,6 +483,9 @@ def test_migration_preserves_existing_accounts(tmp_path):
         assert user.bio == "" and user.company == "" and user.public_email is None
         assert json.loads(user.social_links) == []
         assert user.avatar is None and user.avatar_digest is None
-        assert db.scalar(text("SELECT version_num FROM alembic_version")) == "0009"
+        assert (
+            db.scalar(text("SELECT version_num FROM alembic_version"))
+            == ScriptDirectory.from_config(config).get_current_head()
+        )
         assert db.scalar(select(Repository)) is None
     target.dispose()

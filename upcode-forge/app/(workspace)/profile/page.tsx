@@ -10,6 +10,7 @@ import { Dialog, ConfirmDialog } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 import { ErrorState, Loading } from "@/components/states";
 import { ProfileEditor } from "@/features/profile/profile-editor";
+import { TwoFactorCard } from "@/features/auth/two-factor-card";
 import { SSHKeysCard } from "@/features/profile/ssh-keys";
 import { useResource } from "@/hooks/use-resource";
 import { api, json } from "@/services/api";
@@ -77,6 +78,7 @@ export default function Profile() {
       />
       <div className="content-grid">
         <ProfileEditor />
+        <TwoFactorCard />
         <Card>
           <CardHeader
             title="Change password"
