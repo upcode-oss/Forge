@@ -7,6 +7,7 @@ from sqlalchemy import delete
 from app import database, two_factor
 from app.api import start_session
 from app.database import get_db
+from app.mcp_keys import revoke_all
 from app.models import AccessToken, Instance
 from app.security import current_user, throttle, verify
 
@@ -33,6 +34,7 @@ def decrypt(value):
 
 
 def renew_session(db, user, response):
+    revoke_all(db, user.id)
     db.execute(
         delete(AccessToken).where(AccessToken.user_id == user.id, AccessToken.kind == "session")
     )

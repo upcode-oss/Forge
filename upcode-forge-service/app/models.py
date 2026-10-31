@@ -11,6 +11,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
 )
 from sqlalchemy.dialects.mysql import MEDIUMBLOB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -31,6 +32,7 @@ class Instance(Base):
     public_url: Mapped[str] = mapped_column(String(500))
     default_branch: Mapped[str] = mapped_column(String(100), default="main")
     registration_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    mcp_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     smtp_config: Mapped[str | None] = mapped_column(Text)
     logo: Mapped[bytes | None] = mapped_column(
         LargeBinary().with_variant(MEDIUMBLOB(), "mysql"), deferred=True

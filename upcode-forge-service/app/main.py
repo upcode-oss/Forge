@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
+from starlette.routing import Route
 
 from app import database
 from app.api import router
@@ -10,6 +11,7 @@ from app.avatars import router as avatars_router
 from app.branding import router as branding_router
 from app.config import settings
 from app.git_http import router as git_router
+from app.mcp_key_routes import feature_router as mcp_feature_router
 from app.mcp_key_routes import router as mcp_keys_router
 from app.mcp_transport import MCPApplication
 from app.organizations import router as organizations_router
@@ -87,6 +89,7 @@ app.include_router(organizations_router)
 app.include_router(ssh_keys_router)
 app.include_router(two_factor_router)
 app.include_router(mcp_keys_router)
+app.include_router(mcp_feature_router)
 app.include_router(git_router)
 mcp_application = MCPApplication(app)
-app.mount("/api/v1/mcp", mcp_application)
+app.router.routes.append(Route("/api/v1/mcp", mcp_application))

@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/toast";
 import { ErrorState, Loading } from "@/components/states";
 import { useAuth } from "@/features/auth/auth-context";
 import { InstanceLogoUploader } from "@/features/settings/instance-logo-uploader";
+import { MCPSettingsCard } from "@/features/settings/mcp-settings-card";
 import { instanceUpdated, useInstance } from "@/hooks/use-instance";
 import { useResource } from "@/hooks/use-resource";
 import { api, json } from "@/services/api";
@@ -69,6 +70,7 @@ export default function Settings() {
         description="Configure your instance, logo, Git defaults, and outgoing email."
       />
       <div className="content-grid">
+        <MCPSettingsCard />
         <Card>
           <CardHeader
             title="Instance"

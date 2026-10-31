@@ -1,10 +1,20 @@
 # Personal MCP access
 
 Forge exposes a Streamable HTTP MCP server at
-`https://forge.example.com/api/v1/mcp/`. Use the same public origin as
-the application and preserve the trailing slash.
+`https://forge.example.com/api/v1/mcp`. Use the same public origin as
+the application.
 
 ## Create a key
+
+MCP is **disabled by default**, including when upgrading an existing installation.
+An administrator must enable it under **Instance & System → MCP access** first.
+Migration `0012` stores the opt-in flag on the instance, defaulting to false.
+
+While disabled, the profile hides MCP key management, new keys cannot be created,
+and every MCP request returns HTTP 404, even with an existing valid key. Disabling
+the feature takes effect on subsequent requests immediately. Existing keys remain
+stored; they can be revoked while disabled and work again after re-enabling only
+if still unrevoked, unexpired, and authorized.
 
 Open **Profile & Access Tokens → MCP access keys → Generate MCP key**.
 
@@ -22,7 +32,7 @@ Open **Profile & Access Tokens → MCP access keys → Generate MCP key**.
 Keys are personal: you can list and revoke only your own keys. Revocation and
 expiration apply to every subsequent request, including requests from clients
 that already connected. Password changes, password resets where supported, and
-enabling or disabling 2FA invalidate previously generated MCP keys. Generate a new
+2FA configuration changes invalidate previously generated MCP keys. Generate a new
 key after these account-security changes.
 
 This is explicit personal-key authentication. It does not expose OAuth login,
@@ -34,7 +44,7 @@ account. Clients must support supplying a bearer header.
 Every tool call must satisfy all of these checks:
 
 - The key exists, is unexpired and unrevoked, and its owner is still active with
-  unchanged account credentials and 2FA enrollment.
+  unchanged account credentials and 2FA enrollment, with MCP enabled on the instance.
 - The operation's permission was selected when this key was created.
 - The owner still has that permission now. Forged or excessive scopes are rejected
   by the key-creation API, independently of the interface.
@@ -104,7 +114,7 @@ async def main():
         "Authorization": "Bearer " + os.environ["FORGE_MCP_KEY"],
     }) as http:
         async with Client(streamable_http_client(
-            "https://forge.example.com/api/v1/mcp/", http_client=http,
+            "https://forge.example.com/api/v1/mcp", http_client=http,
         ), cache=None) as client:
             tools = await client.list_tools()
             print([tool.name for tool in tools.tools])
@@ -134,6 +144,7 @@ request-body limit. The existing frontend API proxy forwards MCP headers and JSO
 responses; no extra public backend port or shared instance credential is required.
 
 `tests/test_mcp.py` covers official SDK clients in modern and legacy modes,
+disabled-by-default behavior, restricted settings activation and immediate shutdown,
 per-user scope issuance, one-time key display and hashing, expiry/revocation,
 password and 2FA changes, owner deactivation, private object access, nested-ID
 substitution, membership/role removal, narrowed keys, and migration compatibility.

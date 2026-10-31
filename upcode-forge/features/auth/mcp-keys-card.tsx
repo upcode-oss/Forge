@@ -32,6 +32,18 @@ function date(value: string | null) {
 }
 
 export function MCPKeysCard() {
+  const status = useResource<{ enabled: boolean }>("/mcp-status");
+  const reloadStatus = status.reload;
+  useEffect(() => {
+    const reload = () => void reloadStatus();
+    window.addEventListener("mcp-settings-updated", reload);
+    return () => window.removeEventListener("mcp-settings-updated", reload);
+  }, [reloadStatus]);
+  if (!status.data?.enabled) return null;
+  return <EnabledMCPKeysCard />;
+}
+
+function EnabledMCPKeysCard() {
   const resource = useResource<KeyList>(endpoint);
   const reloadKeys = resource.reload;
   useEffect(() => {
@@ -68,7 +80,7 @@ export function MCPKeysCard() {
         )
         .map((permission) => permission.scope) ?? ["profile.read"],
     );
-    setUrl(new URL("/api/v1/mcp/", window.location.origin).href);
+    setUrl(new URL("/api/v1/mcp", window.location.origin).href);
     setOpen(true);
   }
 

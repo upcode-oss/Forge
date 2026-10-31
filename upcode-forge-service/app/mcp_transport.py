@@ -65,7 +65,7 @@ class MCPApplication:
             ),
         )
         self.inner = server.streamable_http_app(
-            streamable_http_path="/",
+            streamable_http_path="/api/v1/mcp",
             json_response=True,
             stateless_http=True,
             max_request_body_size=1024 * 1024,
@@ -92,6 +92,7 @@ class MCPApplication:
             ):
                 mcp_keys.fail(400, "Send the MCP key only in the Authorization header.")
             with contextmanager(get_db)() as db:
+                mcp_keys.require_enabled(db)
                 origin = public_origin(db).rstrip("/")
                 bootstrap = settings().bootstrap_origin
                 allowed_origins = {origin, bootstrap.rstrip("/")}
@@ -150,7 +151,7 @@ class MCPApplication:
                 path, query, payload = tool.request(arguments)
                 mcp_tools.validate_arguments(db, user, tool, arguments)
             # Dispatch only the fixed method/path above. No client-controlled URLs,
-            # session cookies, user IDs, or administrator credentials are forwarded.
+            # session cookies, alternate identities, or administrator credentials are forwarded.
             async with httpx.AsyncClient(
                 transport=httpx.ASGITransport(app=DelegatedAPI(self.app, raw)),
                 base_url="http://backend",

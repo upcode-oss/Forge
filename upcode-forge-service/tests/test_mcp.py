@@ -13,12 +13,21 @@ from app.main import app
 from app.models import MCPKey
 
 KEYS = "/api/v1/auth/mcp-keys"
-MCP = "/api/v1/mcp/"
+MCP = "/api/v1/mcp"
 
 
 @pytest.fixture
-def mcp_client(admin):
+def base_client(admin):
     yield admin, "safe-admin-password", lambda: database.engine
+
+
+@pytest.fixture
+def mcp_client(base_client):
+    client, _, _ = base_client
+    assert client.get("/api/v1/mcp-status").json() == {"enabled": False}
+    response = client.put("/api/v1/settings/mcp", json={"enabled": True})
+    assert response.status_code == 200, response.text
+    return base_client
 
 
 def create_key(client, password, scopes=None, **extra):
@@ -229,6 +238,8 @@ def test_creation_requires_password_and_enrolled_second_factor(mcp_client):
         == 200
     )
     assert rpc(client, raw, "tools/list").status_code == 401
+
+    assert rpc(client, original, "tools/list").status_code == 401
 
 
 def test_unknown_scopes_and_invalid_expiration_are_rejected(mcp_client):
@@ -636,3 +647,59 @@ def test_mcp_migration_preserves_existing_users(tmp_path):
         assert foreign_keys[0]["referred_table"] == "users"
         assert foreign_keys[0]["constrained_columns"] == ["user_id"]
     engine.dispose()
+
+
+def test_mcp_is_disabled_by_default_and_cannot_generate_keys(base_client):
+    client, password, _ = base_client
+    assert client.get("/api/v1/mcp-status").json() == {"enabled": False}
+    assert rpc(client, "not-a-key", "tools/list").status_code == 404
+    assert client.get(KEYS).status_code == 404
+    assert (
+        client.post(
+            KEYS,
+            json={
+                "name": "Blocked while disabled",
+                "password": password,
+                "scopes": ["profile.read"],
+            },
+        ).status_code
+        == 404
+    )
+
+
+def test_administrative_disable_blocks_existing_keys_and_creation(mcp_client):
+    client, password, _ = mcp_client
+    created = create_key(client, password)
+    key = created["key"]
+    assert rpc(client, key, "tools/list").status_code == 200
+    assert client.put("/api/v1/settings/mcp", json={"enabled": False}).status_code == 200
+    assert client.get("/api/v1/mcp-status").json() == {"enabled": False}
+    assert rpc(client, key, "tools/list").status_code == 404
+    assert client.get(KEYS).status_code == 404
+    assert (
+        client.post(
+            KEYS,
+            json={
+                "name": "Denied",
+                "password": password,
+                "scopes": ["profile.read"],
+            },
+        ).status_code
+        == 404
+    )
+    # Revocation remains available so disabling the feature never prevents cleanup.
+    assert client.delete(KEYS + "/" + created["record"]["id"]).status_code == 200
+    assert client.put("/api/v1/settings/mcp", json={"enabled": True}).status_code == 200
+    assert rpc(client, key, "tools/list").status_code == 401
+
+
+def test_setting_rejects_implicit_string_activation(base_client):
+    client, _, _ = base_client
+    assert client.put("/api/v1/settings/mcp", json={"enabled": "true"}).status_code == 422
+    assert client.get("/api/v1/mcp-status").json() == {"enabled": False}
+
+
+def test_regular_users_cannot_change_instance_mcp_setting(repositories):
+    ctx = repositories
+    assert ctx["alice"].put("/api/v1/settings/mcp", json={"enabled": False}).status_code == 403
+    assert ctx["admin"].get("/api/v1/mcp-status").json() == {"enabled": True}

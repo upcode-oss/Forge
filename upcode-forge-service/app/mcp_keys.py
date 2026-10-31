@@ -7,7 +7,7 @@ import secrets
 from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.mcp_tools import SCOPE_DESCRIPTIONS
 from app.models import MCPKey, User
@@ -17,6 +17,13 @@ PREFIX = "forge_mcp_"
 
 def fail(status, message):
     raise HTTPException(status, message)
+
+
+def require_enabled(db):
+    from app.mcp_settings import enabled
+
+    if not enabled(db):
+        fail(404, "MCP is disabled for this instance.")
 
 
 def digest(value):
@@ -83,6 +90,7 @@ def key_data(record, user):
 
 
 def create_key(db, user, name, scopes, days):
+    require_enabled(db)
     requested = set(scopes)
     if not requested or not requested.issubset(SCOPE_DESCRIPTIONS):
         fail(422, "Select at least one supported MCP permission.")
@@ -104,6 +112,7 @@ def create_key(db, user, name, scopes, days):
 
 
 def authenticate(db, raw, *, touch=False):
+    require_enabled(db)
     if not isinstance(raw, str) or not raw.startswith(PREFIX) or len(raw) > 100:
         fail(401, "A valid personal MCP key is required.")
     record = db.scalar(select(MCPKey).where(MCPKey.digest == digest(raw)))
@@ -144,3 +153,11 @@ def revoke_key(db, user, key_id):
         record.revoked_at = now()
         db.commit()
     return {"revoked": True}
+
+
+def revoke_all(db, user_id):
+    db.execute(
+        update(MCPKey)
+        .where(MCPKey.user_id == user_id, MCPKey.revoked_at.is_(None))
+        .values(revoked_at=now())
+    )
