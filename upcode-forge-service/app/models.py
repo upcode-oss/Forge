@@ -145,6 +145,7 @@ class Repository(Base):
             "(owner_id IS NULL AND organization_id IS NOT NULL)",
             name="ck_repositories_single_owner",
         ),
+        {"sqlite_autoincrement": True},
     )
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))

@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import binascii
 import os
@@ -18,6 +19,7 @@ from app.repository_access import find_repository
 from app.security import throttle, token_user
 
 router = APIRouter()
+GIT_REQUEST_TIMEOUT = 120
 
 
 def execute(repository, suffix, request, incoming, outgoing, username):
@@ -70,7 +72,7 @@ def execute(repository, suffix, request, incoming, outgoing, username):
     return headers, status
 
 
-async def transport(owner: str, name: str, suffix: str, request: Request, db):
+def authorize(owner, name, suffix, request, db, *, expected_repository_id=None):
     service = request.query_params.get("service", "")
     if request.method == "GET" and (
         suffix != "info/refs" or service not in ("git-upload-pack", "git-receive-pack")
@@ -117,7 +119,9 @@ async def transport(owner: str, name: str, suffix: str, request: Request, db):
                 headers={"WWW-Authenticate": 'Basic realm="Upcode Forge"'},
             )
     repository = find_repository(db, owner, name)
-    if repository is None:
+    if repository is None or (
+        expected_repository_id is not None and repository.id != expected_repository_id
+    ):
         raise HTTPException(404, "Repository not found")
     # Parent visibility is checked before authentication prompts, so a guessed
     # private organization's URL never reveals its existence.
@@ -132,14 +136,30 @@ async def transport(owner: str, name: str, suffix: str, request: Request, db):
     access(db, repository.id, user, "write" if writing else "read")
     if writing and token.scope != "write":
         raise HTTPException(403, "This token is read-only")
+    return repository, user
+
+
+async def transport(owner: str, name: str, suffix: str, request: Request, db):
+    repository, user = authorize(owner, name, suffix, request, db)
+    repository_id = repository.id
     incoming, outgoing = tempfile.TemporaryFile(), tempfile.TemporaryFile()
     try:
         size = 0
-        async for chunk in request.stream():
-            size += len(chunk)
-            if size > settings().max_git_body_mb * 1024 * 1024:
-                raise HTTPException(413, "Git request exceeds the configured size limit")
-            incoming.write(chunk)
+        try:
+            async with asyncio.timeout(GIT_REQUEST_TIMEOUT):
+                async for chunk in request.stream():
+                    size += len(chunk)
+                    if size > settings().max_git_body_mb * 1024 * 1024:
+                        raise HTTPException(413, "Git request exceeds the configured size limit")
+                    incoming.write(chunk)
+        except TimeoutError as error:
+            raise HTTPException(408, "Git request body timed out") from error
+        # Uploading may take minutes. Discard the authorization snapshot and
+        # recheck revocation, memberships, visibility and repository identity.
+        db.rollback()
+        repository, user = authorize(
+            owner, name, suffix, request, db, expected_repository_id=repository_id
+        )
         headers, status = await run_in_threadpool(
             execute, repository, suffix, request, incoming, outgoing, user.username if user else ""
         )

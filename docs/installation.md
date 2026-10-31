@@ -83,7 +83,7 @@ location / {
 }
 ```
 
-The backend runs one worker. Authentication throttling is in memory and based on the connecting address. Behind the frontend proxy, the limit is shared by clients: ten login attempts per five minutes. Distributed rate limiting and trusted proxy client addresses are future work.
+The backend runs one worker. Authentication throttling is in memory. Login allows ten attempts per account and connecting address in five minutes; attempts against another account do not consume your account's budget behind the frontend proxy. Registration remains limited to ten requests per connecting address in five minutes. Distributed rate limiting and trusted proxy client addresses are future work.
 
 ## Repository imports
 
@@ -102,6 +102,8 @@ The contribution calendar groups public and private activity by UTC day and year
 It includes authored Git commits matched to the account email, repository creation, issues, pull requests, and comments. Private contributions are shown only as daily and yearly counts, without repository names, commit IDs, titles, or contents. They count toward the total, active days, and longest streak. The category breakdown covers public contributions; the private contribution count appears separately. The repository list and repository count still include public repositories only.
 
 Private activity is counted only in repositories the profile owner owns or currently has membership in. Administrator status alone does not make unrelated private commits appear on a profile. Commit dates use the Git committer timestamp; identical commits shared across branches or repositories count once, with a public copy taking precedence over private copies. Imported history and new pushes are read directly from Git. Changing visibility updates the public/private breakdown immediately. Public repositories can be cloned anonymously; browsing their code in the web workspace still requires sign-in.
+
+Public activity scans are bounded to 100 repositories and five seconds of Git work, with at most two concurrent scans. Large histories may produce the existing incomplete-calendar notice. Excess simultaneous scans return HTTP 429 while other API routes remain available.
 
 Existing installations receive the profile schema migration automatically on backend startup. Rebuild and restart with `docker compose up --build -d`, retaining any database profile you already use. Back up the database and persistent data before upgrading.
 

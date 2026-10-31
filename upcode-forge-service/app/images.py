@@ -7,6 +7,13 @@ from fastapi import HTTPException
 from PIL import Image, ImageOps, UnidentifiedImageError
 from starlette.concurrency import run_in_threadpool
 
+MAX_EXIF_BYTES = 64 * 1024
+
+
+def check_metadata(image, label):
+    if len(image.info.get("exif", b"")) > MAX_EXIF_BYTES:
+        raise HTTPException(413, f"{label} EXIF metadata must not exceed 64 KiB")
+
 
 def normalize_image(data, *, size, max_pixels, label, crop=False):
     try:
@@ -15,7 +22,9 @@ def normalize_image(data, *, size, max_pixels, label, crop=False):
             with Image.open(BytesIO(data), formats=("PNG", "JPEG", "WEBP")) as image:
                 if image.width * image.height > max_pixels:
                     raise HTTPException(413, f"{label} must contain at most {max_pixels:,} pixels")
+                check_metadata(image, label)
                 image.load()
+                check_metadata(image, label)
                 image = ImageOps.exif_transpose(image).convert("RGBA")
                 if crop:
                     image = ImageOps.fit(image, size, method=Image.Resampling.LANCZOS)

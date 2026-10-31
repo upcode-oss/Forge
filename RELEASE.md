@@ -10,6 +10,10 @@ See [TODO.md](TODO.md) for the remaining roadmap and [installation documentation
 
 ## Added locally
 
+- Security fixes: recheck HTTP Git authorization after reading request bodies, impose a body deadline, and prevent SQLite repository ID reuse with migration `0013`. Delayed requests can no longer reuse revoked tokens or access replacement repositories. Existing IDs and repository files are preserved.
+- Isolate login throttling by account behind the frontend proxy, and bound anonymous profile Git scans to preserve API worker capacity.
+- Require Pillow 13.0+ and cryptography 50.0.2+, limit uploaded EXIF metadata to 64 KiB, and update the affected minimatch 10 dependency to 11.0.1+. The remaining npm advisory propagation through minimatch 3 is broader than the [upstream advisory's affected 10.2.6 implementation](https://github.com/isaacs/minimatch/security/advisories/GHSA-g3hv-75wg-m249); the older callable API is retained for ESLint plugin compatibility. Pillow's [EXIF parsing advisory](https://github.com/python-pillow/Pillow/security/advisories/GHSA-g4qv-2jxx-769h) applies directly to image normalization.
+
 - MCP remains disabled by default on new and upgraded installations. Administrators explicitly enable it under **Instance & System → MCP access**. Disabling it hides profile key management and blocks new keys and all existing MCP credentials immediately. Migration `0012` persists the default-off flag.
 
 - Personal MCP keys and a Streamable HTTP MCP endpoint, with code, repository, issue and pull-request tools. Key scopes cannot exceed the creator's current permissions; repository and private-organization checks run for every operation as the key owner. Keys expire, can be revoked, and are invalidated by password/2FA enrollment changes. Migration `0011` preserves existing data. See [MCP access](docs/mcp.md).

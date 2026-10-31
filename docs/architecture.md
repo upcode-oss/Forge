@@ -37,7 +37,11 @@ Accounts can optionally enable authenticator-based two-factor authentication in 
 
 Passwords use Argon2. Browser sessions use random secrets in HttpOnly, SameSite=Lax cookies; only SHA-256 digests are stored in SQL. Sessions expire after seven days. Deploy with `FORGE_COOKIE_SECURE=true` behind HTTPS. Mutating browser API calls require a custom request header, and supplied Origin headers must match a configured origin. CORS is disabled.
 
+Login throttling isolates each existing account, so attempts against one account do not exhaust every user's login budget behind the frontend proxy. Unknown account names share a bucket to prevent random-name floods from bypassing throttling or growing its state. At most four Argon2 verifications run concurrently; excess requests fail promptly with HTTP 429.
+
 Git authenticates using HTTP Basic with a username and an expiring personal access token, separate from browser sessions and account passwords. Token scope only narrows repository rights. Revocation and account deactivation are checked on every Git request. Password changes revoke all sessions and Git tokens.
+
+HTTP Git request bodies have a 120-second deadline. After receiving the body, the transport discards its database snapshot and checks the token, account, repository identity, visibility, and permissions again before starting Git. SQLite repository IDs use `AUTOINCREMENT` (migration `0013`) so a delayed operation cannot resolve an old storage path to another repository after deletion. Existing repository IDs and Git directories are preserved.
 
 Git SSH uses [AsyncSSH](https://asyncssh.readthedocs.io/en/latest/api.html) in the backend process, with a persistent Ed25519 host key and public-key-only authentication as `git`. The cryptography library validates and canonicalizes uploaded OpenSSH public keys; SHA-256 fingerprints are unique across accounts. Read-only keys further narrow account permissions. Every command rechecks the key id, account id, fingerprint, current account state, key scope, and repository permissions. This prevents an old authenticated connection from acquiring a different identity if a deleted SQL key id is reused. Password, keyboard-interactive, host-based and GSS authentication, shells, PTYs, file transfer, and all forwarding are disabled. A command-free connection prints an authentication greeting and exits.
 
@@ -61,6 +65,8 @@ Repository settings include permanent deletion with a full owner/repository name
 Administrators can upload, preview, replace, or reset the instance logo under **Instance & System → Branding**. PNG, JPEG and WebP uploads are limited to 5 MiB and 16 million pixels. The shared image pipeline validates and decodes the file, applies EXIF orientation, removes metadata, and produces a PNG. Logos retain transparency and aspect ratio, are reduced to fit within 512 × 512 pixels, and are not enlarged. Profile pictures continue to use their existing square crop.
 
 Migration `0009` adds nullable logo bytes and a SHA-256 digest to the instance record, preserving existing settings. `/instance` exposes only the digest-based `logo_url`; the image is public so it also works before sign-in. Only administrators may upload or remove a logo, using the existing session and browser request protection. Replaced and removed image URLs return 404. The frontend updates mounted instance views after a change and uses the custom logo in the sidebar, public navigation, login and registration, falling back to the bundled Forge logo after reset or an image load failure.
+
+The shared image pipeline also rejects EXIF metadata larger than 64 KiB. Pillow 13 or newer supplies the EXIF parser security fixes used by avatar and logo normalization.
 
 ## Forge and Sprint connection
 

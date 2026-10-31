@@ -14,7 +14,7 @@ def path_for(repository):
     return settings().data_dir / "repositories" / f"{repository.id}.git"
 
 
-def run(path, *args, input=None, limit=MAX_OUTPUT, env=None):
+def run(path, *args, input=None, limit=MAX_OUTPUT, env=None, timeout=45):
     with tempfile.TemporaryFile() as output:
         try:
             result = subprocess.run(
@@ -22,7 +22,7 @@ def run(path, *args, input=None, limit=MAX_OUTPUT, env=None):
                 input=input,
                 stdout=output,
                 stderr=subprocess.PIPE,
-                timeout=45,
+                timeout=timeout,
                 env={**os.environ, "GIT_TERMINAL_PROMPT": "0", **(env or {})},
             )
         except subprocess.TimeoutExpired as error:

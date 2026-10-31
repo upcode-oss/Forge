@@ -1,5 +1,7 @@
 import json
 from datetime import UTC, date, datetime, time, timedelta
+from threading import BoundedSemaphore
+from time import monotonic
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import case, func, select
@@ -15,6 +17,9 @@ from app.schemas import ProfileUpdate
 from app.security import current_user, optional_user
 
 router = APIRouter(prefix="/api/v1")
+activity_slots = BoundedSemaphore(2)
+MAX_ACTIVITY_REPOSITORIES = 100
+ACTIVITY_TIMEOUT = 5
 
 
 def profile_data(user):
@@ -117,13 +122,21 @@ def contributions(db, user, year):
 
     seen = set()
     incomplete = False
+    deadline = monotonic() + ACTIVITY_TIMEOUT
     # Read actual Git history so imported commits and HTTP pushes appear immediately.
     # Public copies take precedence when a commit exists in both public and private repositories.
-    for repository, visibility in db.execute(
-        select(Repository, effective_visibility)
-        .where(eligible)
-        .order_by(public.desc(), Repository.id)
+    for index, (repository, visibility) in enumerate(
+        db.execute(
+            select(Repository, effective_visibility)
+            .where(eligible)
+            .order_by(public.desc(), Repository.id)
+            .limit(MAX_ACTIVITY_REPOSITORIES + 1)
+        )
     ):
+        remaining = deadline - monotonic()
+        if index >= MAX_ACTIVITY_REPOSITORIES or remaining <= 0:
+            incomplete = True
+            break
         try:
             output = git.run(
                 git.path_for(repository),
@@ -136,6 +149,7 @@ def contributions(db, user, year):
                 f"--author=<{user.email}>",
                 "--format=%H%x00%ae%x00%ct",
                 "--",
+                timeout=min(2, remaining),
             )
             for row in output.decode("utf-8", "replace").splitlines():
                 sha, email, timestamp = row.split("\0")
@@ -184,13 +198,21 @@ def public_profile(
     repositories = db.scalars(
         select(Repository).where(*owned).order_by(Repository.created_at.desc()).limit(100)
     )
+    # Anonymous profile requests must not occupy every API worker with Git scans.
+    # Reject excess scans immediately instead of queuing them in the thread pool.
+    if not activity_slots.acquire(blocking=False):
+        raise HTTPException(429, "Activity is busy. Try again shortly.")
+    try:
+        activity = contributions(db, user, year)
+    finally:
+        activity_slots.release()
     return {
         **profile_data(user),
         "organizations": profile_organizations(db, user, viewer),
         "repository_count": db.scalar(select(func.count()).select_from(Repository).where(*owned)),
         "repositories": [repo_data(db, item, None) for item in repositories],
         "activity": {
-            **contributions(db, user, year),
+            **activity,
             "available_years": list(range(registration_year, this_year + 1)),
         },
     }

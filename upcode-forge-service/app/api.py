@@ -187,8 +187,11 @@ def setup(payload: Setup, request: Request):
 
 @router.post("/auth/login")
 def login(payload: LoginCredentials, request: Request, response: Response, db=Depends(get_db)):
-    throttle(f"login:{request.client.host}")
     user = db.scalar(select(User).where(User.username == payload.username.lower()))
+    # The frontend is the connecting peer for every browser. Isolate real
+    # accounts, but share a bucket for unknown names to prevent random-name
+    # floods from bypassing throttling or growing its in-memory state.
+    throttle(f"login:{request.client.host}:{user.id if user else 'unknown'}")
     valid = verify(payload.password, user.password_hash if user else dummy_hash)
     if not user or not valid or not user.is_active:
         raise HTTPException(401, "Invalid username or password")

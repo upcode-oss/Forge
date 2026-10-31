@@ -2,7 +2,7 @@ import hashlib
 import secrets
 from collections import defaultdict, deque
 from datetime import UTC, timedelta
-from threading import Lock
+from threading import BoundedSemaphore, Lock
 from time import monotonic
 
 from argon2 import PasswordHasher
@@ -17,6 +17,7 @@ hasher = PasswordHasher()
 dummy_hash = hasher.hash(secrets.token_hex(32))
 attempts = defaultdict(deque)
 attempt_lock = Lock()
+password_slots = BoundedSemaphore(4)
 
 
 def throttle(key):
@@ -33,10 +34,16 @@ def throttle(key):
 
 
 def verify(password, encoded):
+    # Argon2 deliberately consumes substantial memory. Fail promptly under load
+    # instead of letting password requests occupy the entire API thread pool.
+    if not password_slots.acquire(blocking=False):
+        raise HTTPException(429, "Password verification is busy. Try again shortly.")
     try:
         return hasher.verify(encoded, password)
     except VerificationError:
         return False
+    finally:
+        password_slots.release()
 
 
 def digest(value):
