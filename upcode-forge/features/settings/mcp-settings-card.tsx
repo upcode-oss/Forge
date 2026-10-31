@@ -34,7 +34,7 @@ export function MCPSettingsCard() {
   }
 
   return (
-    <Card>
+    <Card style={{ alignSelf: "start" }}>
       <CardHeader
         title="MCP access"
         description="Optional access for external MCP clients using personal keys."

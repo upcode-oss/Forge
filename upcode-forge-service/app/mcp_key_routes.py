@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
 from app import database, mcp_keys, mcp_settings, two_factor
@@ -78,7 +78,8 @@ class MCPEnabled(BaseModel):
 
 
 @feature_router.get("/mcp-status")
-def feature_status(db=Depends(get_db)):
+def feature_status(response: Response, db=Depends(get_db)):
+    response.headers["Cache-Control"] = "no-store"
     return {"enabled": mcp_settings.enabled(db)}
 
 
