@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/toast";
 import { ErrorState, Loading } from "@/components/states";
 import { ProfileEditor } from "@/features/profile/profile-editor";
 import { TwoFactorCard } from "@/features/auth/two-factor-card";
+import { MCPKeysCard } from "@/features/auth/mcp-keys-card";
 import { SSHKeysCard } from "@/features/profile/ssh-keys";
 import { useResource } from "@/hooks/use-resource";
 import { api, json } from "@/services/api";
@@ -111,6 +112,7 @@ export default function Profile() {
           <TwoFactorCard />
         </div>
         <SSHKeysCard />
+        <MCPKeysCard />
         <Card className="wide">
           <CardHeader
             title="Git access tokens"

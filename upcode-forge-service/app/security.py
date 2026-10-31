@@ -71,6 +71,12 @@ def token_user(db, raw, kind):
 
 
 def optional_user(request: Request, db=Depends(get_db)):
+    # Only the in-process MCP dispatcher can populate this ASGI scope field.
+    # Public Authorization headers do not create a browser session.
+    if raw := request.scope.get("upcode_mcp_key"):
+        from app.mcp_keys import authenticate
+
+        return authenticate(db, raw)[0]
     user, _ = token_user(db, request.cookies.get("forge_session", ""), "session")
     return user
 

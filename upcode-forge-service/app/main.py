@@ -10,6 +10,8 @@ from app.avatars import router as avatars_router
 from app.branding import router as branding_router
 from app.config import settings
 from app.git_http import router as git_router
+from app.mcp_key_routes import router as mcp_keys_router
+from app.mcp_transport import MCPApplication
 from app.organizations import router as organizations_router
 from app.profiles import router as profiles_router
 from app.ssh_keys import router as ssh_keys_router
@@ -25,7 +27,8 @@ async def lifespan(app):
     database.load()
     ssh = await start_ssh_server() if config.ssh_enabled else None
     try:
-        yield
+        async with mcp_application.run():
+            yield
     finally:
         if ssh:
             await ssh.close()
@@ -39,7 +42,11 @@ app = FastAPI(title="Upcode Forge", version="0.1.0", lifespan=lifespan)
 
 @app.middleware("http")
 async def browser_security(request: Request, call_next):
-    if request.url.path.startswith("/api/") and request.method not in ("GET", "HEAD", "OPTIONS"):
+    if (
+        request.url.path.startswith("/api/")
+        and request.method not in ("GET", "HEAD", "OPTIONS")
+        and request.url.path.rstrip("/") != "/api/v1/mcp"
+    ):
         # Requiring a custom header blocks cross-origin form submissions. No CORS is enabled.
         if request.headers.get("x-forge-request") != "1":
             return JSONResponse({"detail": "Missing request protection header"}, status_code=403)
@@ -79,4 +86,7 @@ app.include_router(branding_router)
 app.include_router(organizations_router)
 app.include_router(ssh_keys_router)
 app.include_router(two_factor_router)
+app.include_router(mcp_keys_router)
 app.include_router(git_router)
+mcp_application = MCPApplication(app)
+app.mount("/api/v1/mcp", mcp_application)

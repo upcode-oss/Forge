@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from uuid import uuid4
 
 from sqlalchemy import (
     BigInteger,
@@ -78,6 +79,20 @@ class AccessToken(Base):
     scope: Mapped[str] = mapped_column(String(10), default="write")
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class MCPKey(Base):
+    __tablename__ = "mcp_keys"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    digest: Mapped[str] = mapped_column(String(64), unique=True)
+    scopes: Mapped[str] = mapped_column(Text)
+    password_digest: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class Organization(Base):
