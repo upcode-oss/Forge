@@ -27,7 +27,6 @@ A self-hosted Git collaboration platform with repository hosting, code browsing,
 - 🔑 **Access Tokens** - Expiring read/write Git tokens, shown once and individually revocable
 - ⚙️ **Setup Wizard** - Instance identity, public URL, default branch, database, and first administrator
 - 🎨 **Instance Logo** - Upload, preview, replace, or reset your logo under Instance & System; used in the sidebar, public navigation, sign-in and registration
-- 🔗 **Sprint Connection** - Pair one Forge and one Sprint instance from either application's settings; configure once, verify connectivity, and disconnect from either side
 - 🗄️ **Database Support** - SQLAlchemy with SQLite, PostgreSQL, or MariaDB/MySQL and Alembic migrations
 - ✉️ **SMTP Configuration** - Encrypted credentials and test email delivery in administration
 - 🎨 **Shared Upcode UI** - Sprint theme variables, fonts, sidebar layout, cards, forms, and responsive light/dark mode

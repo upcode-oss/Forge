@@ -10,7 +10,7 @@ See [TODO.md](TODO.md) for the remaining roadmap and [installation documentation
 
 ## Added locally
 
-- Sprint pairing now exposes the local callback URL and lets administrators correct it before retrying a pending connection. Loopback defaults suggest the current browser origin with the correct port. Failed callbacks, mismatched public URLs, and upstream HTTP errors have specific diagnostics. Pending retries retain their existing connection ID and key.
+- Sprint instance pairing is deferred to a later release; its settings and API endpoints have been removed.
 
 - Backend images normalize application and Alembic file permissions before switching to the unprivileged `forge` user. Builds from checkouts with restrictive file modes (such as a `077` host umask) can now start, run setup, and migrate the database without granting the application write access to its code.
 

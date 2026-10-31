@@ -8,7 +8,6 @@ import { Field, Input, Select } from "@/components/ui/form";
 import { useToast } from "@/components/ui/toast";
 import { ErrorState, Loading } from "@/components/states";
 import { useAuth } from "@/features/auth/auth-context";
-import { InstanceConnection } from "@/features/integrations/instance-connection";
 import { InstanceLogoUploader } from "@/features/settings/instance-logo-uploader";
 import { instanceUpdated, useInstance } from "@/hooks/use-instance";
 import { useResource } from "@/hooks/use-resource";
@@ -67,10 +66,9 @@ export default function Settings() {
     <>
       <PageHeader
         title="Instance & System"
-        description="Configure your instance, logo, Sprint connection, Git defaults, and outgoing email."
+        description="Configure your instance, logo, Git defaults, and outgoing email."
       />
       <div className="content-grid">
-        <InstanceConnection />
         <Card>
           <CardHeader
             title="Instance"

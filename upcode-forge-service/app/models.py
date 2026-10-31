@@ -13,8 +13,6 @@ from sqlalchemy import (
 from sqlalchemy.dialects.mysql import MEDIUMBLOB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from app.instance_link import LinkColumns
-
 
 def now():
     return datetime.now(UTC)
@@ -22,10 +20,6 @@ def now():
 
 class Base(DeclarativeBase):
     pass
-
-
-class InstanceConnection(LinkColumns, Base):
-    __tablename__ = "instance_connections"
 
 
 class Instance(Base):

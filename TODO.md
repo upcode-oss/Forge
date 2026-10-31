@@ -1,5 +1,6 @@
 # Open work
 
+- Sprint instance connection (deferred to a later release; pairing is not available in the current version)
 - Repository-scoped SSH deploy keys and hardware-backed SSH key types
 - Git LFS, repository forks, tags UI, and archive downloads
 - Protected branches, required approvals, and status checks
