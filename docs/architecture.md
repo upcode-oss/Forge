@@ -27,6 +27,8 @@ Alembic owns database schema changes. `installation.json` contains the encrypted
 
 ## Authentication and access
 
+Accounts can optionally enable authenticator-based two-factor authentication in their profile. [The 2FA guide](two-factor-authentication.md) covers setup, recovery, encrypted storage, and session revocation. Migration `0010` leaves existing accounts with 2FA disabled until they enroll.
+
 Passwords use Argon2. Browser sessions use random secrets in HttpOnly, SameSite=Lax cookies; only SHA-256 digests are stored in SQL. Sessions expire after seven days. Deploy with `FORGE_COOKIE_SECURE=true` behind HTTPS. Mutating browser API calls require a custom request header, and supplied Origin headers must match a configured origin. CORS is disabled.
 
 Git authenticates using HTTP Basic with a username and an expiring personal access token, separate from browser sessions and account passwords. Token scope only narrows repository rights. Revocation and account deactivation are checked on every Git request. Password changes revoke all sessions and Git tokens.
