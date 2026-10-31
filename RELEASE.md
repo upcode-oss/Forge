@@ -10,6 +10,8 @@ See [TODO.md](TODO.md) for the remaining roadmap and [installation documentation
 
 ## Added locally
 
+- Personal MCP keys and a Streamable HTTP MCP endpoint, with code, repository, issue and pull-request tools. Key scopes cannot exceed the creator's current permissions; repository and private-organization checks run for every operation as the key owner. Keys expire, can be revoked, and are invalidated by password/2FA enrollment changes. Migration `0011` preserves existing data. See [MCP access](docs/mcp.md).
+
 - Optional authenticator-based two-factor authentication under **Profile & Access Tokens**: locally generated QR codes, confirmed setup, ten single-use recovery codes, and password-plus-code checks for disabling or replacing recovery codes. Password-only login issues no session for enabled accounts. Factor changes revoke other browser sessions; Git tokens and SSH keys stay independent. Migration `0010` preserves existing accounts with 2FA disabled by default. See the [2FA guide](docs/two-factor-authentication.md).
 
 - Sprint instance pairing is deferred to a later release; its settings and API endpoints have been removed.

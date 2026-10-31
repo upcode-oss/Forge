@@ -27,6 +27,12 @@ Alembic owns database schema changes. `installation.json` contains the encrypted
 
 ## Authentication and access
 
+Personal MCP access uses an explicit API-tool allowlist and keys whose selected
+scope ceiling is intersected with the owner's current permissions. The dispatcher
+reuses the application API's repository and private-organization access checks
+without browser sessions or a service administrator. [MCP access](mcp.md) documents
+the endpoint, supported tools and key lifecycle.
+
 Accounts can optionally enable authenticator-based two-factor authentication in their profile. [The 2FA guide](two-factor-authentication.md) covers setup, recovery, encrypted storage, and session revocation. Migration `0010` leaves existing accounts with 2FA disabled until they enroll.
 
 Passwords use Argon2. Browser sessions use random secrets in HttpOnly, SameSite=Lax cookies; only SHA-256 digests are stored in SQL. Sessions expire after seven days. Deploy with `FORGE_COOKIE_SECURE=true` behind HTTPS. Mutating browser API calls require a custom request header, and supplied Origin headers must match a configured origin. CORS is disabled.

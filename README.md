@@ -25,6 +25,7 @@ A self-hosted Git collaboration platform with repository hosting, code browsing,
 - 🔀 **Pull Requests** - Compare branches, discuss changes, and merge without conflicts
 - 👥 **Users & Permissions** - Instance administrators and repository read, write, and maintain access
 - 🔑 **Access Tokens** - Expiring read/write Git tokens, shown once and individually revocable
+- 🤖 **Personal MCP Access** - Expiring, revocable keys with selected permissions, live repository access checks, and code/issue/PR tools; see [MCP access](docs/mcp.md)
 - 🔐 **Two-Factor Authentication** - Optional authenticator app sign-in, local QR setup, and single-use recovery codes; see the [2FA guide](docs/two-factor-authentication.md)
 - ⚙️ **Setup Wizard** - Instance identity, public URL, default branch, database, and first administrator
 - 🎨 **Instance Logo** - Upload, preview, replace, or reset your logo under Instance & System; used in the sidebar, public navigation, sign-in and registration
