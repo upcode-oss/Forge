@@ -18,7 +18,7 @@ def upgrade():
         sa.Column("mfa_pending_secret_encrypted", sa.Text(), nullable=True),
         sa.Column("mfa_pending_expires_at", sa.BigInteger(), nullable=True),
         sa.Column("mfa_last_step", sa.BigInteger(), nullable=False, server_default="-1"),
-        sa.Column("mfa_recovery_hashes", sa.Text(), nullable=False, server_default="[]"),
+        sa.Column("mfa_recovery_hashes", sa.String(1000), nullable=False, server_default="[]"),
         sa.Column("mfa_failed_attempts", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("mfa_locked_until", sa.BigInteger(), nullable=True),
     ]
