@@ -78,36 +78,38 @@ export default function Profile() {
       />
       <div className="content-grid">
         <ProfileEditor />
-        <TwoFactorCard />
-        <Card>
-          <CardHeader
-            title="Change password"
-            description="Changing your password revokes all sessions and Git tokens."
-          />
-          <form className="form-grid" onSubmit={password}>
-            <Field label="Current password">
-              <Input
-                type="password"
-                name="current_password"
-                required
-                autoComplete="current-password"
-              />
-            </Field>
-            <Field label="New password" hint="At least 12 characters.">
-              <Input
-                type="password"
-                name="new_password"
-                required
-                minLength={12}
-                maxLength={256}
-                autoComplete="new-password"
-              />
-            </Field>
-            <div className="form-actions">
-              <Button loading={busy}>Change password</Button>
-            </div>
-          </form>
-        </Card>
+        <div className="stack" style={{ alignSelf: "start" }}>
+          <Card>
+            <CardHeader
+              title="Change password"
+              description="Changing your password revokes all sessions and Git tokens."
+            />
+            <form className="form-grid" onSubmit={password}>
+              <Field label="Current password">
+                <Input
+                  type="password"
+                  name="current_password"
+                  required
+                  autoComplete="current-password"
+                />
+              </Field>
+              <Field label="New password" hint="At least 12 characters.">
+                <Input
+                  type="password"
+                  name="new_password"
+                  required
+                  minLength={12}
+                  maxLength={256}
+                  autoComplete="new-password"
+                />
+              </Field>
+              <div className="form-actions">
+                <Button loading={busy}>Change password</Button>
+              </div>
+            </form>
+          </Card>
+          <TwoFactorCard />
+        </div>
         <SSHKeysCard />
         <Card className="wide">
           <CardHeader
