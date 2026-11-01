@@ -1,7 +1,7 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
-import { Trash2, Upload } from "lucide-react";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/form";
@@ -42,7 +42,6 @@ export function AvatarUpload({
 }) {
   const { notify } = useToast();
   const input = useRef<HTMLInputElement>(null);
-  const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -54,13 +53,11 @@ export function AvatarUpload({
   );
 
   function reset() {
-    setFile(null);
     setPreview(null);
     if (input.current) input.current.value = "";
   }
   function select(event: ChangeEvent<HTMLInputElement>) {
     const chosen = event.target.files?.[0];
-    setFile(null);
     setPreview(null);
     setError("");
     if (!chosen) return;
@@ -76,12 +73,10 @@ export function AvatarUpload({
       setError("Choose a PNG, JPEG or WebP image.");
       return;
     }
-    setFile(chosen);
     setPreview(URL.createObjectURL(chosen));
+    void save(chosen);
   }
-  async function save(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!file) return;
+  async function save(file: File) {
     setBusy(true);
     setError("");
     try {
@@ -94,6 +89,7 @@ export function AvatarUpload({
       reset();
       notify("Profile picture updated");
     } catch (error) {
+      reset();
       setError((error as Error).message);
     } finally {
       setBusy(false);
@@ -114,14 +110,17 @@ export function AvatarUpload({
     }
   }
   return (
-    <form className="avatar-editor" onSubmit={save}>
+    <div className="avatar-editor" aria-busy={busy}>
       <Avatar
         name={name}
         src={preview ?? avatarUrl}
         className="profile-editor-avatar"
       />
       <div className="avatar-editor-fields">
-        <Field label="Profile picture" hint={hint}>
+        <Field
+          label="Profile picture"
+          hint={`${hint} Pictures are saved automatically after selection.`}
+        >
           <Input
             ref={input}
             type="file"
@@ -131,9 +130,7 @@ export function AvatarUpload({
           />
         </Field>
         <div className="avatar-editor-actions">
-          <Button size="sm" loading={busy} disabled={!file}>
-            <Upload /> {avatarUrl ? "Replace picture" : "Upload picture"}
-          </Button>
+          {busy && <p role="status">Saving profile picture…</p>}
           {avatarUrl && (
             <Button
               type="button"
@@ -145,17 +142,6 @@ export function AvatarUpload({
               <Trash2 /> Remove picture
             </Button>
           )}
-          {file && (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={busy}
-              onClick={reset}
-            >
-              Cancel
-            </Button>
-          )}
         </div>
         {error && (
           <p className="field-error" role="alert">
@@ -163,6 +149,6 @@ export function AvatarUpload({
           </p>
         )}
       </div>
-    </form>
+    </div>
   );
 }

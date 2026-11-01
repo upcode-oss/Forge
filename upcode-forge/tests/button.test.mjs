@@ -240,7 +240,7 @@ test("the profile editor renders image upload and removal beside profile fields"
     );
     assert.match(markup, /type="file"/);
     assert.match(markup, /accept="image\/png,image\/jpeg,image\/webp"/);
-    assert.match(markup, /Replace picture/);
+    assert.match(markup, /Pictures are saved automatically after selection/);
     assert.match(markup, /Remove picture/);
     assert.match(markup, /Save public profile/);
     assert.match(markup, /href="\/u\/hackandcode"/);
